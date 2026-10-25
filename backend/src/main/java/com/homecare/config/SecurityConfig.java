@@ -32,6 +32,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/google").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/files/photos/**").permitAll()
                 .requestMatchers("/api/caregivers/me/**").hasRole("CAREGIVER")
+                .requestMatchers(HttpMethod.GET, "/api/caregivers", "/api/caregivers/counts").hasRole("CARE_SEEKER")
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

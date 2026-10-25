@@ -17,4 +17,8 @@ public final class ProfileDtos {
 
     public record ProfileResponse(String fullName, Integer age, Integer experienceYears,
                                   String qualification, JobType jobType, String photoUrl) {}
+
+    /** Public listing card. Deliberately omits email and phone. */
+    public record CaregiverCard(Long id, String fullName, Integer age, Integer experienceYears,
+                                String qualification, JobType jobType, String photoUrl) {}
 }

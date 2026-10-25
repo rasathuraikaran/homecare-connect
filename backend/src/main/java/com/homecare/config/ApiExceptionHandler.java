@@ -4,6 +4,7 @@ import com.homecare.auth.AuthDtos.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,5 +36,10 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ErrorResponse> unreadable(HttpMessageNotReadableException e) {
         return ResponseEntity.badRequest().body(new ErrorResponse("Invalid request. Check the values you entered."));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ErrorResponse> badParam(MethodArgumentTypeMismatchException e) {
+        return ResponseEntity.badRequest().body(new ErrorResponse("Invalid value for " + e.getName()));
     }
 }
