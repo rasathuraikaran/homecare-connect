@@ -27,3 +27,15 @@ export const Heart = (p) => (
 export const Activity = (p) => (
   <svg {...base} {...p}><path d="M3 12h4l3-8 4 16 3-8h4" /></svg>
 )
+export const Check = (p) => (
+  <svg {...base} {...p}><path d="m5 12 5 5 9-10" /></svg>
+)
+export const Bulb = (p) => (
+  <svg {...base} {...p}><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3Z" /></svg>
+)
+export const Arrow = (p) => (
+  <svg {...base} {...p}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+)
+export const Star = ({ filled, ...p }) => (
+  <svg {...base} {...p} fill={filled ? 'currentColor' : 'none'}><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8L3.5 9.7l5.9-.9L12 3.5Z" /></svg>
+)

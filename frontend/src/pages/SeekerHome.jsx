@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import CaregiverCard from '../components/CaregiverCard'
+import ReviewsDialog from '../components/ReviewsDialog'
 import { Activity, Alert, Heart, Stethoscope } from '../components/Icons'
 import { JOBS } from '../constants/jobs'
 
@@ -15,6 +16,7 @@ export default function SeekerHome({ firstName }) {
   const [counts, setCounts] = useState({})
   const [result, setResult] = useState({ status: 'idle', list: [], error: '' })
   const [attempt, setAttempt] = useState(0)
+  const [reviewing, setReviewing] = useState(null)   // caregiver whose reviews are open
 
   useEffect(() => {
     api('/caregivers/counts').then(setCounts).catch(() => {})
@@ -29,6 +31,12 @@ export default function SeekerHome({ firstName }) {
       .catch((e) => !cancelled && setResult({ status: 'error', list: [], error: e.message }))
     return () => { cancelled = true }
   }, [selected?.value, attempt])
+
+  // after a review is saved, refresh the cards quietly so the new rating shows without a loading flash
+  function refreshSilently() {
+    if (!selected) return
+    api(`/caregivers?job=${selected.value}`).then((list) => setResult({ status: 'done', list, error: '' })).catch(() => {})
+  }
 
   function choose(value) {
     if (value === selected?.value) {
@@ -92,11 +100,12 @@ export default function SeekerHome({ firstName }) {
             )}
 
             {result.status === 'done' && result.list.length > 0 && (
-              <div className="cg-grid">{result.list.map((c) => <CaregiverCard key={c.id} caregiver={c} />)}</div>
+              <div className="cg-grid">{result.list.map((c) => <CaregiverCard key={c.id} caregiver={c} onOpenReviews={setReviewing} />)}</div>
             )}
           </>
         )}
       </div>
+      {reviewing && <ReviewsDialog caregiver={reviewing} onClose={() => setReviewing(null)} onChanged={refreshSilently} />}
     </section>
   )
 }

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import CaregiverHome from './CaregiverHome'
 import SeekerHome from './SeekerHome'
 import Avatar from '../components/Avatar'
 import { HeartHouse } from '../components/Icons'
@@ -20,14 +21,9 @@ export default function DashboardPage() {
           <button className="btn-ghost" onClick={logout}>Sign out</button>
         </div>
       </header>
-      {isCaregiver ? (
-        <section className="content">
-          <h1>Welcome, {user.fullName.split(' ')[0]} 👋</h1>
-          <p className="subtitle">Your profile is saved. Use "Edit profile" any time to add more details.</p>
-        </section>
-      ) : (
-        <SeekerHome firstName={user.fullName.split(' ')[0]} />
-      )}
+      {isCaregiver
+        ? <CaregiverHome firstName={user.fullName.split(' ')[0]} />
+        : <SeekerHome firstName={user.fullName.split(' ')[0]} />}
     </div>
   )
 }

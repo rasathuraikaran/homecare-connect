@@ -8,7 +8,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.homecare.review.ReviewRepository;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,21 +25,33 @@ public class CaregiverDirectoryController {
     private static final int MAX_RESULTS = 50;
 
     private final CaregiverProfileRepository profiles;
+    private final ReviewRepository reviews;
 
-    public CaregiverDirectoryController(CaregiverProfileRepository profiles) {
+    public CaregiverDirectoryController(CaregiverProfileRepository profiles, ReviewRepository reviews) {
         this.profiles = profiles;
+        this.reviews = reviews;
     }
 
     @GetMapping
     @Transactional(readOnly = true)
     public List<CaregiverCard> list(@RequestParam JobType job) {
-        return profiles.findCards(job, PageRequest.of(0, MAX_RESULTS)).stream()
-                .map(row -> {
-                    CaregiverProfile p = (CaregiverProfile) row[0];
-                    return new CaregiverCard(p.getUserId(), (String) row[1], p.getAge(), p.getExperienceYears(),
-                            p.getQualification(), p.getJobType(), p.getRates(), p.photoUrl());
-                })
-                .toList();
+        List<Object[]> rows = profiles.findCards(job, PageRequest.of(0, MAX_RESULTS));
+        List<Long> ids = rows.stream().map(r -> ((CaregiverProfile) r[0]).getUserId()).toList();
+
+        // one query for all the ratings instead of one per card
+        Map<Long, Object[]> ratings = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (Object[] r : reviews.summaries(ids)) ratings.put((Long) r[0], r);
+        }
+
+        return rows.stream().map(row -> {
+            CaregiverProfile p = (CaregiverProfile) row[0];
+            Object[] rating = ratings.get(p.getUserId());
+            Double average = rating == null ? null : BigDecimal.valueOf((Double) rating[1]).setScale(1, RoundingMode.HALF_UP).doubleValue();
+            long count = rating == null ? 0 : (Long) rating[2];
+            return new CaregiverCard(p.getUserId(), (String) row[1], p.getAge(), p.getExperienceYears(),
+                    p.getQualification(), p.getJobType(), p.getRates(), p.photoUrl(), average, count);
+        }).toList();
     }
 
     @GetMapping("/counts")

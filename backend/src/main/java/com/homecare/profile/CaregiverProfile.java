@@ -36,6 +36,9 @@ public class CaregiverProfile {
     @BatchSize(size = 50)
     private Map<RateType, BigDecimal> rates = new HashMap<>();
 
+    @Column(nullable = false)
+    private boolean available = true;
+
     @Column(name = "photo_file")
     private String photoFile;
 
@@ -59,6 +62,11 @@ public class CaregiverProfile {
         this.updatedAt = Instant.now();
     }
 
+    public void setAvailable(boolean available) {
+        this.available = available;
+        this.updatedAt = Instant.now();
+    }
+
     public void setPhotoFile(String photoFile) {
         this.photoFile = photoFile;
         this.updatedAt = Instant.now();
@@ -74,6 +82,7 @@ public class CaregiverProfile {
     public String getQualification() { return qualification; }
     /** Charges in a stable (declaration) order. Call inside a transaction. */
     public Map<RateType, BigDecimal> getRates() { return new TreeMap<>(rates); }
+    public boolean isAvailable() { return available; }
     public JobType getJobType() { return jobType; }
     public String getPhotoFile() { return photoFile; }
 }

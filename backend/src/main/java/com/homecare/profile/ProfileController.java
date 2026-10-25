@@ -39,6 +39,11 @@ public class ProfileController {
         return service.setPhoto(user, file);
     }
 
+    @PutMapping("/caregivers/me/availability")
+    public ProfileResponse availability(@AuthenticationPrincipal User user, @Valid @RequestBody AvailabilityRequest req) {
+        return service.setAvailable(user, req.available());
+    }
+
     @DeleteMapping("/caregivers/me/photo")
     public ProfileResponse removePhoto(@AuthenticationPrincipal User user) {
         return service.removePhoto(user);

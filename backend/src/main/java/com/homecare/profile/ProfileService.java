@@ -3,9 +3,11 @@ package com.homecare.profile;
 import com.homecare.profile.ProfileDtos.*;
 import com.homecare.user.User;
 import com.homecare.user.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -61,8 +63,17 @@ public class ProfileService {
         return toResponse(user, profile);
     }
 
+    @Transactional
+    public ProfileResponse setAvailable(User principal, boolean available) {
+        User user = users.findById(principal.getId()).orElseThrow();
+        CaregiverProfile profile = profiles.findById(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Save your profile first"));
+        profile.setAvailable(available);
+        return toResponse(user, profiles.save(profile));
+    }
+
     private ProfileResponse toResponse(User user, CaregiverProfile p) {
-        if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), null);
-        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.getRates(), p.photoUrl());
+        if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null);
+        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.getRates(), p.isAvailable(), p.photoUrl());
     }
 }

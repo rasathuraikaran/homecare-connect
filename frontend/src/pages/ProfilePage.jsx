@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
@@ -19,6 +19,8 @@ const digits = (v, max) => v.replace(/\D/g, '').slice(0, max)
 export default function ProfilePage() {
   const { user, refresh, logout } = useAuth()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const focus = params.get('focus')
   const fileRef = useRef(null)
   const firstTime = !user.profileCompleted
 
@@ -41,6 +43,17 @@ export default function ProfilePage() {
       setPhotoUrl(p.photoUrl)
     }).catch((e) => setServerIssues([e.message])).finally(() => setLoaded(true))
   }, [firstTime])
+
+  // Arriving from a "Set your charges" style link: scroll to that section and highlight it briefly
+  useEffect(() => {
+    if (!loaded || !focus) return
+    const el = document.getElementById(focus)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('flash')
+    const t = setTimeout(() => el.classList.remove('flash'), 1800)
+    return () => clearTimeout(t)
+  }, [loaded, focus])
 
   useEffect(() => () => newPhoto && URL.revokeObjectURL(newPhoto.preview), [newPhoto])
 
@@ -156,7 +169,7 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <section className="section span-all">
+            <section id="job" className="section span-all">
               <h2>What do you do? <span className="optional">Optional</span></h2>
               <div className="jobs" role="radiogroup" aria-label="Job">
                 {JOBS.map(({ value, label, desc }) => {
@@ -174,10 +187,11 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <section className="section">
+            <section id="about" className="section">
               <h2>About you</h2>
               <div className="identity">
                 <div
+                  id="photo"
                   className={`photo-block${dragging ? ' dragging' : ''}`}
                   onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
                   onDragLeave={() => setDragging(false)}
@@ -207,7 +221,7 @@ export default function ProfilePage() {
               <span className="hint">Photo: drag onto the circle or click it. JPG, PNG or WebP, up to 2 MB.</span>
             </section>
 
-            <section className="section">
+            <section id="qualifications" className="section">
               <h2>Qualifications <span className="optional">Optional</span></h2>
               <Field label="Qualifications and certificates" maxLength={255} placeholder="Separate with commas"
                      value={form.qualification} onChange={set('qualification')} />
@@ -218,7 +232,7 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <section className="section span-wide">
+            <section id="charges" className="section span-wide">
               <h2>Your charges <span className="optional">Optional</span></h2>
               <p className="hint">Tick the ways you charge and enter an amount ({CURRENCY}). You can offer more than one.</p>
               <div className="rates">

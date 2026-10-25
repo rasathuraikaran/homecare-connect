@@ -25,10 +25,13 @@ public final class ProfileDtos {
 
     public record ProfileResponse(String fullName, Integer age, Integer experienceYears,
                                   String qualification, JobType jobType,
-                                  Map<RateType, BigDecimal> rates, String photoUrl) {}
+                                  Map<RateType, BigDecimal> rates, boolean available, String photoUrl) {}
+
+    public record AvailabilityRequest(@NotNull(message = "Say whether you are available") Boolean available) {}
 
     /** Public listing card. Deliberately omits email and phone. */
     public record CaregiverCard(Long id, String fullName, Integer age, Integer experienceYears,
                                 String qualification, JobType jobType,
-                                  Map<RateType, BigDecimal> rates, String photoUrl) {}
+                                  Map<RateType, BigDecimal> rates, String photoUrl,
+                                Double rating, long reviewCount) {}
 }
