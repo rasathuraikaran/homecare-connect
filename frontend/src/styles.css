@@ -56,7 +56,7 @@ form { display: grid; gap: 1.1rem; }
 .input-wrap input::placeholder { color: var(--ink-3); }
 .input-wrap input:hover { border-color: var(--ink-3); }
 .input-wrap input:focus { outline: none; border-color: var(--brand-600); box-shadow: var(--ring); }
-.input-wrap input[type=password], .input-wrap:has(.icon-btn) input { padding-right: 2.8rem; }
+.input-wrap:has(.icon-btn) input { padding-right: 2.8rem; }
 .icon-btn { position: absolute; top: 0; right: 0; height: 44px; width: 44px; display: grid; place-items: center; color: var(--ink-3); background: none; border: 0; border-radius: var(--radius); cursor: pointer; }
 .icon-btn:hover { color: var(--ink); }
 .icon-btn:focus-visible { outline: none; box-shadow: var(--ring); }
@@ -114,3 +114,16 @@ form { display: grid; gap: 1.1rem; }
 .pt-chip { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .75rem; font-weight: 600; font-size: .85rem; color: var(--brand-700); background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 999px; }
 .pt-chip svg { width: 16px; height: 16px; }
 .role-badge a { font-size: .85rem; }
+
+/* profile */
+.content.narrow { max-width: 640px; }
+.panel { display: grid; gap: 1.1rem; margin-top: 1.5rem; padding: 1.5rem; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.optional { font-weight: 400; color: var(--ink-3); }
+.photo-row { display: flex; gap: 1.1rem; align-items: center; padding-bottom: 1.1rem; border-bottom: 1px solid var(--line); }
+.photo-preview { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; flex: none; }
+.photo-preview.placeholder { display: grid; place-items: center; font-size: 1.5rem; font-weight: 700; color: var(--brand-700); background: var(--brand-100); }
+.photo-actions { display: grid; gap: .3rem; }
+.photo-buttons { display: flex; gap: .5rem; margin-top: .3rem; }
+.avatar { object-fit: cover; flex: none; }
+a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; }
+a.btn-ghost:hover { text-decoration: none; }

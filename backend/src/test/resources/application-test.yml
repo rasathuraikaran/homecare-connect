@@ -5,3 +5,7 @@ spring:
     password:
   flyway:
     enabled: true
+
+app:
+  uploads:
+    dir: ${java.io.tmpdir}/homecare-test-uploads

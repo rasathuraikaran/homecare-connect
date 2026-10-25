@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import Avatar from '../components/Avatar'
 import { HeartHouse } from '../components/Icons'
 
 export default function DashboardPage() {
@@ -11,8 +13,9 @@ export default function DashboardPage() {
       <header className="topbar">
         <div className="brand"><span className="brand-mark"><HeartHouse /></span>HomeCare Connect</div>
         <div className="user">
-          <span className="avatar">{initials}</span>
+          <Avatar user={user} initials={initials} />
           <span className="user-meta"><strong>{user.fullName}</strong><em>{isCaregiver ? 'Caregiver' : 'Care seeker'}</em></span>
+          {isCaregiver && <Link className="btn-ghost" to="/profile">Edit profile</Link>}
           <button className="btn-ghost" onClick={logout}>Sign out</button>
         </div>
       </header>
@@ -20,7 +23,7 @@ export default function DashboardPage() {
         <h1>Welcome, {user.fullName.split(' ')[0]} 👋</h1>
         <p className="subtitle">
           {isCaregiver
-            ? 'Next step: build your profile so families can find you.'
+            ? 'Your profile is saved. Use "Edit profile" any time to add more details.'
             : 'Next step: browse caregivers and pick the right one.'}
         </p>
       </section>

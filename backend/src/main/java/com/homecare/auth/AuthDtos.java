@@ -25,9 +25,11 @@ public final class AuthDtos {
     /** role: used only when a new account must be created; expectedRole: must match an existing account. */
     public record GoogleLoginRequest(@NotBlank String idToken, Role role, Role expectedRole) {}
 
-    public record UserResponse(Long id, String fullName, String email, String phone, Role role) {
-        public static UserResponse from(User u) {
-            return new UserResponse(u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole());
+    public record UserResponse(Long id, String fullName, String email, String phone, Role role,
+                               boolean profileCompleted, String photoUrl) {
+        public static UserResponse from(User u, boolean profileCompleted, String photoUrl) {
+            return new UserResponse(u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole(),
+                    profileCompleted, photoUrl);
         }
     }
 

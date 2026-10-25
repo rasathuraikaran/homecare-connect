@@ -6,12 +6,18 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5434/homecare}
     username: ${DB_USER:homecare}
     password: ${DB_PASSWORD:homecare}
+  servlet:
+    multipart:
+      max-file-size: 3MB
+      max-request-size: 3MB
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
 
 app:
+  uploads:
+    dir: ${UPLOADS_DIR:./uploads}
   jwt:
     # Override JWT_SECRET in any real environment (min 32 chars)
     secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret}

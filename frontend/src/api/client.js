@@ -6,15 +6,16 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 }
 
-export async function api(path, { method = 'GET', body } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+export async function api(path, { method = 'GET', body, form } = {}) {
+  const headers = {}
+  if (!form) headers['Content-Type'] = 'application/json'
   const token = tokenStore.get()
   if (token) headers.Authorization = `Bearer ${token}`
 
   const res = await fetch(`/api${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: form ?? (body ? JSON.stringify(body) : undefined),
   })
   const data = await res.json().catch(() => null)
   if (!res.ok) {

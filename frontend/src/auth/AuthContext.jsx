@@ -24,13 +24,14 @@ export function AuthProvider({ children }) {
   const login = (credentials) => api('/auth/login', { method: 'POST', body: credentials }).then(handleAuth)
   const register = (details) => api('/auth/register', { method: 'POST', body: details }).then(handleAuth)
   const googleLogin = (payload) => api('/auth/google', { method: 'POST', body: payload }).then(handleAuth)
+  const refresh = () => api('/auth/me').then(setUser)
   const logout = () => {
     tokenStore.clear()
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   )

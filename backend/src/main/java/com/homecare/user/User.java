@@ -50,6 +50,8 @@ public class User {
 
     public void linkGoogle(String googleSub) { this.googleSub = googleSub; }
 
+    public void setFullName(String fullName) { this.fullName = fullName; }
+
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
