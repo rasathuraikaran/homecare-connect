@@ -59,7 +59,13 @@ class AuthFlowTest {
                 .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"b@test.com\",\"password\":\"password123\",\"role\":\"CAREGIVER\"}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("care seeker")));
+        // wrong password with the wrong role must not reveal the real role
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"b@test.com\",\"password\":\"wrong-pass-1\",\"role\":\"CAREGIVER\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid email or password"));
     }
 
     @Test

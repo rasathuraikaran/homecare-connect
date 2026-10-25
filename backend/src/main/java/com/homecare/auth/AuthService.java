@@ -43,10 +43,18 @@ public class AuthService {
         User user = users.findByEmailIgnoreCase(req.email().trim())
                 .filter(u -> u.getPasswordHash() != null)
                 .filter(u -> encoder.matches(req.password(), u.getPasswordHash()))
-                // If a role tab was chosen on the login page, it must match the account's role
-                .filter(u -> req.role() == null || u.getRole() == req.role())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
+        // Only reached with a correct password, so naming the real role does not reveal whether an email exists
+        if (req.role() != null && user.getRole() != req.role()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, wrongRoleMessage(user.getRole()));
+        }
         return new AuthResponse(jwt.generate(user), toResponse(user));
+    }
+
+    private static String wrongRoleMessage(Role actual) {
+        return actual == Role.CAREGIVER
+                ? "This account is registered as a caregiver. Go back and choose \"Caregiver\" to sign in."
+                : "This account is registered as a care seeker. Go back and choose \"Care seeker\" to sign in.";
     }
 
     public AuthResponse googleLogin(GoogleLoginRequest req) {
@@ -67,7 +75,7 @@ public class AuthService {
             user = users.save(User.fromGoogle(email, id.name() != null ? id.name() : email, id.subject(), req.role()));
         } else if (req.expectedRole() != null && user.getRole() != req.expectedRole()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "This account is registered as a " + (user.getRole().name().equals("CAREGIVER") ? "caregiver" : "care seeker"));
+                    wrongRoleMessage(user.getRole()));
         }
         return new AuthResponse(jwt.generate(user), toResponse(user));
     }
