@@ -18,6 +18,10 @@ public class CaregiverProfile {
 
     private String qualification;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_type")
+    private JobType jobType;
+
     @Column(name = "photo_file")
     private String photoFile;
 
@@ -30,10 +34,11 @@ public class CaregiverProfile {
         this.userId = userId;
     }
 
-    public void update(Integer age, Integer experienceYears, String qualification) {
+    public void update(Integer age, Integer experienceYears, String qualification, JobType jobType) {
         this.age = age;
         this.experienceYears = experienceYears;
         this.qualification = qualification;
+        this.jobType = jobType;
         this.updatedAt = Instant.now();
     }
 
@@ -50,5 +55,6 @@ public class CaregiverProfile {
     public Integer getAge() { return age; }
     public Integer getExperienceYears() { return experienceYears; }
     public String getQualification() { return qualification; }
+    public JobType getJobType() { return jobType; }
     public String getPhotoFile() { return photoFile; }
 }

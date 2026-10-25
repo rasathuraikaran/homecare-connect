@@ -32,7 +32,7 @@ public class ProfileService {
         user.setFullName(req.fullName().trim());
         CaregiverProfile profile = profiles.findById(user.getId()).orElseGet(() -> new CaregiverProfile(user.getId()));
         String qualification = req.qualification() == null || req.qualification().isBlank() ? null : req.qualification().trim();
-        profile.update(req.age(), req.experienceYears(), qualification);
+        profile.update(req.age(), req.experienceYears(), qualification, req.jobType());
         return toResponse(user, profiles.save(profile));
     }
 
@@ -60,7 +60,7 @@ public class ProfileService {
     }
 
     private ProfileResponse toResponse(User user, CaregiverProfile p) {
-        if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null);
-        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.photoUrl());
+        if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null, null);
+        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.photoUrl());
     }
 }

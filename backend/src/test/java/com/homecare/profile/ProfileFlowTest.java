@@ -47,7 +47,8 @@ class ProfileFlowTest {
 
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"Anu K\",\"age\":34,\"experienceYears\":6,\"qualification\":\"Diploma in Nursing\"}"))
+                        .content("{\"fullName\":\"Anu K\",\"age\":34,\"experienceYears\":6,\"qualification\":\"Diploma in Nursing\",\"jobType\":\"NURSING\"}"))
+                .andExpect(jsonPath("$.jobType").value("NURSING"))
                 .andExpect(jsonPath("$.age").value(34))
                 .andExpect(jsonPath("$.qualification").value("Diploma in Nursing"));
 
@@ -74,6 +75,9 @@ class ProfileFlowTest {
                 .andExpect(status().isBadRequest());
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"A\",\"age\":12}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"A\",\"jobType\":\"PILOT\"}"))
                 .andExpect(status().isBadRequest());
 
         // not an image, even if it claims to be

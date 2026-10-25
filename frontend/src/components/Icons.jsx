@@ -21,3 +21,9 @@ export const EyeOff = (p) => (
 export const Alert = (p) => (
   <svg {...base} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.01" /></svg>
 )
+export const Heart = (p) => (
+  <svg {...base} {...p}><path d="M12 20s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9Z" /></svg>
+)
+export const Activity = (p) => (
+  <svg {...base} {...p}><path d="M3 12h4l3-8 4 16 3-8h4" /></svg>
+)
