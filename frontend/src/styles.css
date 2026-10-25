@@ -275,3 +275,35 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .empty { display: grid; justify-items: center; gap: .3rem; padding: 3rem 1rem; text-align: center; color: var(--ink-2); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 16px; }
 .empty strong { color: var(--ink); }
 @media (max-width: 760px) { .care-tiles { grid-template-columns: 1fr; } .care-tile { grid-template-columns: auto 1fr; column-gap: 1rem; align-items: center; } .care-icon { grid-row: span 3; margin: 0; } .care-count { justify-self: start; margin-top: .3rem; } }
+
+/* charges */
+.rates { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .8rem; }
+.rate { display: grid; align-content: start; gap: .8rem; padding: .95rem 1rem; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); transition: border-color .15s, background .15s, box-shadow .15s; }
+.rate:hover { border-color: var(--ink-3); }
+.rate.on { border-color: var(--brand-600); background: var(--brand-50); }
+.rate:focus-within { box-shadow: var(--ring); }
+.rate-head { display: flex; gap: .7rem; align-items: flex-start; cursor: pointer; }
+.rate-head input { width: 18px; height: 18px; margin-top: .15rem; accent-color: var(--brand-600); flex: none; cursor: pointer; }
+.rate-head span { display: grid; gap: .1rem; }
+.rate-head strong { font-size: .95rem; color: var(--ink); }
+.rate-head em { font-style: normal; font-size: .78rem; color: var(--ink-3); }
+.rate-amount { display: grid; gap: .3rem; }
+.input-wrap.has-prefix input { padding-left: 3.4rem; }
+.prefix { position: absolute; top: 0; left: .85rem; height: 44px; display: grid; align-items: center; font-size: .82rem; font-weight: 600; color: var(--ink-2); pointer-events: none; }
+.input-wrap.has-prefix.has-suffix input { padding-right: 5.2rem; }
+.rate-amount .suffix { font-size: .78rem; }
+
+.price-list { width: 100%; margin: .35rem 0 0; padding: .6rem 0 0; list-style: none; display: grid; gap: .35rem; border-top: 1px solid var(--line); }
+.price-list li { display: flex; justify-content: space-between; gap: .75rem; font-size: .85rem; color: var(--ink-2); text-align: left; }
+.price-list strong { color: var(--ink); white-space: nowrap; }
+
+@media (min-width: 1180px) {
+  .panel .section.span-wide { grid-column: 1 / -1; padding-top: 1.6rem; border-top: 1px solid var(--line); }
+}
+@media (min-width: 1400px) {
+  .prefix { height: 54px; left: 1.1rem; }
+  .input-wrap.has-prefix input { padding-left: 3.9rem; }
+  .rate { padding: 1.2rem 1.3rem; }
+  .rate-head strong { font-size: 1.02rem; }
+  .price-list li { font-size: .92rem; }
+}

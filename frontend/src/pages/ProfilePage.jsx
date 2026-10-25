@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
 import { Activity, Alert, Heart, HeartHouse, Stethoscope } from '../components/Icons'
 import { JOBS } from '../constants/jobs'
+import { CURRENCY, RATE_TYPES } from '../constants/rates'
 import ProfilePreview from '../components/ProfilePreview'
 
 const MAX_PHOTO = 2 * 1024 * 1024
@@ -21,7 +22,7 @@ export default function ProfilePage() {
   const fileRef = useRef(null)
   const firstTime = !user.profileCompleted
 
-  const [form, setForm] = useState({ fullName: user.fullName, age: '', experienceYears: '', qualification: '', jobType: '' })
+  const [form, setForm] = useState({ fullName: user.fullName, age: '', experienceYears: '', qualification: '', jobType: '', rates: {} })
   const [photoUrl, setPhotoUrl] = useState(null)   // saved photo
   const [newPhoto, setNewPhoto] = useState(null)   // { file, preview }
   const [removePhoto, setRemovePhoto] = useState(false)
@@ -33,7 +34,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (firstTime) return
     api('/caregivers/me/profile').then((p) => {
-      setForm({ fullName: p.fullName, age: p.age ?? '', experienceYears: p.experienceYears ?? '', qualification: p.qualification ?? '', jobType: p.jobType ?? '' })
+      setForm({ fullName: p.fullName, age: p.age ?? '', experienceYears: p.experienceYears ?? '', qualification: p.qualification ?? '', jobType: p.jobType ?? '',
+        rates: Object.fromEntries(Object.entries(p.rates ?? {}).map(([k, v]) => [k, String(v)])) })
       setPhotoUrl(p.photoUrl)
     }).catch((e) => setError(e.message)).finally(() => setLoaded(true))
   }, [firstTime])
@@ -45,7 +47,18 @@ export default function ProfilePage() {
 
   const ageError = form.age !== '' && (Number(form.age) < 18 || Number(form.age) > 100) ? 'Age must be between 18 and 100' : ''
   const expError = form.experienceYears !== '' && Number(form.experienceYears) > 60 ? 'Enter 60 or fewer years' : ''
-  const invalid = !form.fullName.trim() || !!ageError || !!expError
+  const rateErrors = Object.fromEntries(
+    Object.entries(form.rates).map(([k, v]) => [k, v === '' || Number(v) <= 0 ? 'Enter an amount' : '']))
+  const ratesInvalid = Object.values(rateErrors).some(Boolean)
+  const invalid = !form.fullName.trim() || !!ageError || !!expError || ratesInvalid
+
+  function toggleRate(type) {
+    const rates = { ...form.rates }
+    if (type in rates) delete rates[type]
+    else rates[type] = ''
+    setForm({ ...form, rates })
+  }
+  const setRate = (type) => (e) => setForm({ ...form, rates: { ...form.rates, [type]: digits(e.target.value, 7) } })
 
   function acceptPhoto(file) {
     if (!file) return
@@ -70,7 +83,8 @@ export default function ProfilePage() {
     try {
       await api('/caregivers/me/profile', {
         method: 'PUT',
-        body: { fullName: form.fullName, age: num(form.age), experienceYears: num(form.experienceYears), qualification: form.qualification, jobType: form.jobType || null },
+        body: { fullName: form.fullName, age: num(form.age), experienceYears: num(form.experienceYears), qualification: form.qualification, jobType: form.jobType || null,
+          rates: Object.fromEntries(Object.entries(form.rates).map(([k, v]) => [k, Number(v)])) },
       })
       if (newPhoto) {
         const fd = new FormData()
@@ -174,6 +188,35 @@ export default function ProfilePage() {
               </div>
             </section>
 
+            <section className="section span-wide">
+              <h2>Your charges <span className="optional">Optional</span></h2>
+              <p className="hint">Tick the ways you charge and enter an amount ({CURRENCY}). You can offer more than one.</p>
+              <div className="rates">
+                {RATE_TYPES.map(({ value, label, unit, desc }) => {
+                  const on = value in form.rates
+                  return (
+                    <div key={value} className={on ? 'rate on' : 'rate'}>
+                      <label className="rate-head">
+                        <input type="checkbox" checked={on} onChange={() => toggleRate(value)} />
+                        <span><strong>{label}</strong><em>{desc}</em></span>
+                      </label>
+                      {on && (
+                        <div className="rate-amount">
+                          <div className={`input-wrap has-prefix has-suffix${form.rates[value] === '' ? ' invalid' : ''}`}>
+                            <span className="prefix">{CURRENCY}</span>
+                            <input inputMode="numeric" placeholder="0" aria-label={`${label} amount`}
+                                   value={form.rates[value]} onChange={setRate(value)} autoFocus={form.rates[value] === ''} />
+                            <span className="suffix">{unit}</span>
+                          </div>
+                          {form.rates[value] === '' && <span className="hint error-text">{rateErrors[value]}</span>}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
             {error && <div className="alert" role="alert"><Alert />{error}</div>}
             <div className="actions">
               {!firstTime && <Link className="btn-ghost" to="/">Cancel</Link>}
@@ -184,7 +227,7 @@ export default function ProfilePage() {
           </form>
 
           <ProfilePreview name={form.fullName.trim()} age={form.age} years={form.experienceYears}
-                          qualification={form.qualification} photo={shownPhoto} jobType={form.jobType} />
+                          qualification={form.qualification} photo={shownPhoto} jobType={form.jobType} rates={form.rates} />
         </div>
       </main>
     </div>

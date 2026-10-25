@@ -66,6 +66,39 @@ class ProfileFlowTest {
     }
 
     @Test
+    void ratesAreSavedReplacedAndValidated() throws Exception {
+        String auth = "Bearer " + token("cg-rates@test.com", "CAREGIVER");
+        String url = "/api/caregivers/me/profile";
+
+        mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"R\",\"rates\":{\"HOURLY\":1500,\"FULL_DAY_NIGHT\":12000.50}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rates.HOURLY").value(1500))
+                .andExpect(jsonPath("$.rates.FULL_DAY_NIGHT").value(12000.50));
+
+        // saving again replaces the whole set
+        mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"R\",\"rates\":{\"DAILY\":6000}}"))
+                .andExpect(jsonPath("$.rates.DAILY").value(6000))
+                .andExpect(jsonPath("$.rates.HOURLY").doesNotExist());
+        mvc.perform(get(url).header("Authorization", auth))
+                .andExpect(jsonPath("$.rates.DAILY").value(6000))
+                .andExpect(jsonPath("$.rates.FULL_DAY_NIGHT").doesNotExist());
+
+        // no rates at all clears them
+        mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"R\"}"))
+                .andExpect(jsonPath("$.rates.DAILY").doesNotExist());
+
+        for (String bad : new String[]{"{\"HOURLY\":0}", "{\"HOURLY\":-5}", "{\"HOURLY\":12345678}",
+                "{\"HOURLY\":10.999}", "{\"WEEKLY\":100}", "{\"HOURLY\":null}"}) {
+            mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"fullName\":\"R\",\"rates\":" + bad + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
     void validationAndAccessRules() throws Exception {
         String cg = "Bearer " + token("cg2@test.com", "CAREGIVER");
         String seeker = "Bearer " + token("seeker@test.com", "CARE_SEEKER");

@@ -39,6 +39,10 @@ class DirectoryTest {
     @Test
     void seekerSeesOnlyMatchingCaregiversWithoutContactDetails() throws Exception {
         caregiver("dir-n1@test.com", "Nina Nurse", "NURSING", 3);
+        String ninaAuth = register("dir-n3@test.com", "CAREGIVER");
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", ninaAuth).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fullName\":\"Rita Rates\",\"jobType\":\"NURSING\",\"rates\":{\"HOURLY\":1800,\"DAILY\":9000}}"))
+                .andExpect(status().isOk());
         caregiver("dir-n2@test.com", "Omar Nurse", "NURSING", 9);
         caregiver("dir-p1@test.com", "Pia Physio", "PHYSIOTHERAPIST", 4);
         String seeker = register("dir-seeker@test.com", "CARE_SEEKER");
@@ -48,6 +52,7 @@ class DirectoryTest {
                 .andExpect(jsonPath("$[?(@.jobType != 'NURSING')]").isEmpty())
                 .andExpect(jsonPath("$[?(@.fullName == 'Nina Nurse')]").isNotEmpty())
                 .andExpect(jsonPath("$[?(@.fullName == 'Pia Physio')]").isEmpty())
+                .andExpect(jsonPath("$[?(@.fullName == 'Rita Rates')].rates.HOURLY").value(1800.0))
                 .andExpect(jsonPath("$[0].email").doesNotExist())
                 .andExpect(jsonPath("$[0].phone").doesNotExist());
 

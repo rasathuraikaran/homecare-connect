@@ -32,7 +32,7 @@ public class CaregiverDirectoryController {
                 .map(row -> {
                     CaregiverProfile p = (CaregiverProfile) row[0];
                     return new CaregiverCard(p.getUserId(), (String) row[1], p.getAge(), p.getExperienceYears(),
-                            p.getQualification(), p.getJobType(), p.photoUrl());
+                            p.getQualification(), p.getJobType(), p.getRates(), p.photoUrl());
                 })
                 .toList();
     }
