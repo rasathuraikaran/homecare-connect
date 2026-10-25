@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    container_name: homecare-db
+    environment:
+      POSTGRES_DB: homecare
+      POSTGRES_USER: homecare
+      POSTGRES_PASSWORD: homecare
+    ports:
+      - "5434:5432"
+    volumes:
+      - homecare-data:/var/lib/postgresql/data
+volumes:
+  homecare-data:
