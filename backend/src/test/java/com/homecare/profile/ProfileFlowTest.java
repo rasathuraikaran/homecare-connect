@@ -99,6 +99,20 @@ class ProfileFlowTest {
     }
 
     @Test
+    void validationErrorsAreReadableAndListedTogether() throws Exception {
+        String auth = "Bearer " + token("cg-errs@test.com", "CAREGIVER");
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"\",\"age\":12,\"experienceYears\":99,\"rates\":{\"HOURLY\":0}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.length()").value(4))
+                .andExpect(jsonPath("$.errors[?(@ == 'Full name is required')]").isNotEmpty())
+                .andExpect(jsonPath("$.errors[?(@ == 'Age must be between 18 and 100')]").isNotEmpty())
+                .andExpect(jsonPath("$.errors[?(@ == 'Experience must be between 0 and 60 years')]").isNotEmpty())
+                .andExpect(jsonPath("$.errors[?(@ == 'Per hour charge must be greater than zero')]").isNotEmpty());
+    }
+
+    @Test
     void validationAndAccessRules() throws Exception {
         String cg = "Bearer " + token("cg2@test.com", "CAREGIVER");
         String seeker = "Bearer " + token("seeker@test.com", "CARE_SEEKER");

@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useLayoutEffect } from 'react'
+import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import LoginPage from './pages/LoginPage'
 import WelcomePage from './pages/WelcomePage'
@@ -22,7 +23,24 @@ function GuestOnly({ children }) {
   return user ? <Navigate to="/" replace /> : children
 }
 
+/** Care seekers get the light blue theme, caregivers the green one. The welcome screen stays neutral (green). */
+function useRoleTheme() {
+  const { user } = useAuth()
+  const { pathname } = useLocation()
+  const [params] = useSearchParams()
+  const role = user?.role ?? (pathname === '/login' || pathname === '/register' ? params.get('role') : null)
+  const theme = role === 'CARE_SEEKER' ? 'seeker' : role === 'CAREGIVER' ? 'caregiver' : null
+
+  // layout effect: set the theme before the browser paints, so there is no flash of the wrong colour
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    if (theme) root.dataset.theme = theme
+    else delete root.dataset.theme
+  }, [theme])
+}
+
 export default function App() {
+  useRoleTheme()
   return (
     <Routes>
       <Route path="/welcome" element={<GuestOnly><WelcomePage /></GuestOnly>} />

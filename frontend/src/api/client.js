@@ -12,15 +12,21 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   const token = tokenStore.get()
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers,
-    body: form ?? (body ? JSON.stringify(body) : undefined),
-  })
+  let res
+  try {
+    res = await fetch(`/api${path}`, {
+      method,
+      headers,
+      body: form ?? (body ? JSON.stringify(body) : undefined),
+    })
+  } catch {
+    throw new Error("Can't reach the server. Check your connection and try again.")
+  }
   const data = await res.json().catch(() => null)
   if (!res.ok) {
-    const err = new Error(data?.message || 'Something went wrong')
+    const err = new Error(data?.message || 'Something went wrong. Please try again.')
     err.status = res.status
+    err.errors = data?.errors ?? null
     throw err
   }
   return data

@@ -27,7 +27,9 @@ export default function ProfilePage() {
   const [newPhoto, setNewPhoto] = useState(null)   // { file, preview }
   const [removePhoto, setRemovePhoto] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const [error, setError] = useState('')
+  const [serverIssues, setServerIssues] = useState([])
+  const [attempted, setAttempted] = useState(false)
+  const bannerRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [loaded, setLoaded] = useState(firstTime)
 
@@ -37,7 +39,7 @@ export default function ProfilePage() {
       setForm({ fullName: p.fullName, age: p.age ?? '', experienceYears: p.experienceYears ?? '', qualification: p.qualification ?? '', jobType: p.jobType ?? '',
         rates: Object.fromEntries(Object.entries(p.rates ?? {}).map(([k, v]) => [k, String(v)])) })
       setPhotoUrl(p.photoUrl)
-    }).catch((e) => setError(e.message)).finally(() => setLoaded(true))
+    }).catch((e) => setServerIssues([e.message])).finally(() => setLoaded(true))
   }, [firstTime])
 
   useEffect(() => () => newPhoto && URL.revokeObjectURL(newPhoto.preview), [newPhoto])
@@ -49,8 +51,17 @@ export default function ProfilePage() {
   const expError = form.experienceYears !== '' && Number(form.experienceYears) > 60 ? 'Enter 60 or fewer years' : ''
   const rateErrors = Object.fromEntries(
     Object.entries(form.rates).map(([k, v]) => [k, v === '' || Number(v) <= 0 ? 'Enter an amount' : '']))
-  const ratesInvalid = Object.values(rateErrors).some(Boolean)
-  const invalid = !form.fullName.trim() || !!ageError || !!expError || ratesInvalid
+  const nameError = !form.fullName.trim() ? 'Full name is required' : ''
+
+  // Everything wrong with the form right now, in the order it appears
+  const problems = [
+    nameError,
+    ageError,
+    expError,
+    ...RATE_TYPES.filter((r) => rateErrors[r.value]).map((r) => `Enter an amount for "${r.label}" or untick it`),
+  ].filter(Boolean)
+  // After a failed save attempt the banner follows the form live, so it clears as problems are fixed
+  const issues = attempted && problems.length ? problems : serverIssues
 
   function toggleRate(type) {
     const rates = { ...form.rates }
@@ -60,11 +71,16 @@ export default function ProfilePage() {
   }
   const setRate = (type) => (e) => setForm({ ...form, rates: { ...form.rates, [type]: digits(e.target.value, 7) } })
 
+  function showServerIssues(list) {
+    setServerIssues(list)
+    setTimeout(() => bannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+  }
+
   function acceptPhoto(file) {
     if (!file) return
-    if (!TYPES.includes(file.type)) return setError('Photo must be a JPG, PNG or WebP image')
-    if (file.size > MAX_PHOTO) return setError('Photo must be 2 MB or smaller')
-    setError('')
+    if (!TYPES.includes(file.type)) return showServerIssues(['Photo must be a JPG, PNG or WebP image'])
+    if (file.size > MAX_PHOTO) return showServerIssues(['Photo must be 2 MB or smaller'])
+    setServerIssues([])
     setRemovePhoto(false)
     setNewPhoto({ file, preview: URL.createObjectURL(file) })
   }
@@ -77,8 +93,12 @@ export default function ProfilePage() {
 
   async function submit(e) {
     e.preventDefault()
-    if (invalid) return
-    setError('')
+    setServerIssues([])
+    if (problems.length) {
+      setAttempted(true)
+      setTimeout(() => bannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+      return
+    }
     setBusy(true)
     try {
       await api('/caregivers/me/profile', {
@@ -96,7 +116,7 @@ export default function ProfilePage() {
       await refresh()
       navigate('/')
     } catch (err) {
-      setError(err.message)
+      showServerIssues(err.errors?.length ? err.errors : [err.message])
     } finally {
       setBusy(false)
     }
@@ -126,6 +146,16 @@ export default function ProfilePage() {
 
         <div className="profile-grid">
           <form onSubmit={submit} className="panel" noValidate>
+            {issues.length > 0 && (
+              <div ref={bannerRef} className="banner" role="alert" tabIndex={-1}>
+                <Alert />
+                <div>
+                  <strong>{issues.length === 1 ? 'There is a problem with your profile' : `Please fix these ${issues.length} problems`}</strong>
+                  <ul>{issues.map((m) => <li key={m}>{m}</li>)}</ul>
+                </div>
+              </div>
+            )}
+
             <section className="section span-all">
               <h2>What do you do? <span className="optional">Optional</span></h2>
               <div className="jobs" role="radiogroup" aria-label="Job">
@@ -165,7 +195,7 @@ export default function ProfilePage() {
 
                 <div className="identity-fields">
                   <Field label="Full name *" required maxLength={150} autoComplete="name"
-                         value={form.fullName} onChange={set('fullName')} />
+                         error={attempted ? nameError : ''} value={form.fullName} onChange={set('fullName')} />
                   <div className="row">
                     <Field label="Age" inputMode="numeric" placeholder="e.g. 34" error={ageError}
                            value={form.age} onChange={set('age', (v) => digits(v, 3))} />
@@ -217,10 +247,9 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            {error && <div className="alert" role="alert"><Alert />{error}</div>}
             <div className="actions">
               {!firstTime && <Link className="btn-ghost" to="/">Cancel</Link>}
-              <button className="btn-primary" disabled={busy || invalid}>
+              <button className="btn-primary" disabled={busy}>
                 {busy && <span className="spinner" />}{busy ? 'Saving…' : firstTime ? 'Save and continue' : 'Save changes'}
               </button>
             </div>

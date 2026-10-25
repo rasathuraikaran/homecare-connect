@@ -1,11 +1,14 @@
 package com.homecare.auth;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.homecare.user.Role;
 import com.homecare.user.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 public final class AuthDtos {
     private AuthDtos() {}
@@ -35,5 +38,11 @@ public final class AuthDtos {
 
     public record AuthResponse(String token, UserResponse user) {}
 
-    public record ErrorResponse(String message) {}
+    /** message is always set; errors lists each problem separately when several fields failed validation. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record ErrorResponse(String message, List<String> errors) {
+        public ErrorResponse(String message) {
+            this(message, null);
+        }
+    }
 }
