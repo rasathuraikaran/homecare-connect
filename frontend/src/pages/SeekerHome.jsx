@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import CaregiverCard from '../components/CaregiverCard'
+import BookingDialog from '../components/BookingDialog'
+import MyRequests from '../components/MyRequests'
 import ReviewsDialog from '../components/ReviewsDialog'
+import { useAuth } from '../auth/AuthContext'
 import { Activity, Alert, Heart, Stethoscope } from '../components/Icons'
 import { JOBS } from '../constants/jobs'
 
@@ -17,6 +20,13 @@ export default function SeekerHome({ firstName }) {
   const [result, setResult] = useState({ status: 'idle', list: [], error: '' })
   const [attempt, setAttempt] = useState(0)
   const [reviewing, setReviewing] = useState(null)   // caregiver whose reviews are open
+  const [requesting, setRequesting] = useState(null)  // caregiver being requested
+  const [myRequests, setMyRequests] = useState([])
+  const { user } = useAuth()
+
+  const loadMyRequests = () => api('/bookings/mine').then(setMyRequests).catch(() => {})
+  useEffect(() => { loadMyRequests() }, [])
+  const showMyRequests = () => setTimeout(() => document.getElementById('my-requests')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
 
   useEffect(() => {
     api('/caregivers/counts').then(setCounts).catch(() => {})
@@ -100,11 +110,17 @@ export default function SeekerHome({ firstName }) {
             )}
 
             {result.status === 'done' && result.list.length > 0 && (
-              <div className="cg-grid">{result.list.map((c) => <CaregiverCard key={c.id} caregiver={c} onOpenReviews={setReviewing} />)}</div>
+              <div className="cg-grid">{result.list.map((c) => <CaregiverCard key={c.id} caregiver={c} onOpenReviews={setReviewing} onRequest={setRequesting} />)}</div>
             )}
           </>
         )}
       </div>
+      <MyRequests items={myRequests} reload={loadMyRequests} />
+
+      {requesting && (
+        <BookingDialog caregiver={requesting} defaultPhone={user.phone} onClose={() => setRequesting(null)}
+                       onBooked={loadMyRequests} onViewRequests={showMyRequests} />
+      )}
       {reviewing && <ReviewsDialog caregiver={reviewing} onClose={() => setReviewing(null)} onChanged={refreshSilently} />}
     </section>
   )

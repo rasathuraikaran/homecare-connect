@@ -29,10 +29,10 @@ public final class AuthDtos {
     public record GoogleLoginRequest(@NotBlank String idToken, Role role, Role expectedRole) {}
 
     public record UserResponse(Long id, String fullName, String email, String phone, Role role,
-                               boolean profileCompleted, String photoUrl) {
+                               boolean profileCompleted, String photoUrl, boolean admin) {
         public static UserResponse from(User u, boolean profileCompleted, String photoUrl) {
             return new UserResponse(u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole(),
-                    profileCompleted, photoUrl);
+                    profileCompleted, photoUrl, u.isAdmin());
         }
     }
 

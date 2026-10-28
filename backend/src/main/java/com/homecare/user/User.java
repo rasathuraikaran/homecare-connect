@@ -29,6 +29,9 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Column(name = "is_admin", nullable = false)
+    private boolean admin;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 
@@ -59,4 +62,5 @@ public class User {
     public String getPhone() { return phone; }
     public String getGoogleSub() { return googleSub; }
     public Role getRole() { return role; }
+    public boolean isAdmin() { return admin; }
 }

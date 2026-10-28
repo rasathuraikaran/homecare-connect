@@ -24,5 +24,30 @@ app:
     expiry-minutes: 120
   google:
     client-id: ${GOOGLE_CLIENT_ID:}
+  whatsapp:
+    # Alerts to the admin. While enabled is false nothing is sent: the message is only written to the log (test mode).
+    enabled: ${WHATSAPP_ENABLED:false}
+    token: ${WHATSAPP_TOKEN:}
+    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+    api-version: ${WHATSAPP_API_VERSION:}
+    admin-to: ${WHATSAPP_ADMIN_TO:}
+    template-name: ${WHATSAPP_TEMPLATE_NAME:new_booking_details}
+    language: ${WHATSAPP_TEMPLATE_LANGUAGE:en}
+  email:
+    # Alerts to the admin by email. While enabled is false nothing is sent: the email is only written to the log (test mode).
+    enabled: ${EMAIL_ENABLED:false}
+    host: ${EMAIL_SMTP_HOST:}
+    port: ${EMAIL_SMTP_PORT:587}
+    username: ${EMAIL_USERNAME:}
+    password: ${EMAIL_PASSWORD:}
+    from: ${EMAIL_FROM:}
+    # One address, or several separated by commas
+    admin-to: ${EMAIL_ADMIN_TO:}
+    # The link at the bottom of the email: the site's address (PUBLIC_URL, else the frontend's CORS_ORIGIN) plus /admin
+    admin-url: ${PUBLIC_URL:${CORS_ORIGIN:http://localhost:5173}}/admin
+  notifications:
+    # How the admin hears about a booking request: email or whatsapp
+    channel: ${NOTIFY_CHANNEL:email}
+    scheduler-enabled: true
   cors:
     allowed-origin: ${CORS_ORIGIN:http://localhost:5173}

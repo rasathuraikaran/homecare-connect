@@ -6,6 +6,7 @@ import WelcomePage from './pages/WelcomePage'
 import RegisterPage from './pages/RegisterPage'
 import ProfilePage from './pages/ProfilePage'
 import DashboardPage from './pages/DashboardPage'
+import AdminPage from './pages/AdminPage'
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth()
@@ -15,6 +16,11 @@ function RequireAuth({ children }) {
   // Caregivers must finish their profile before using the app
   if (!user.profileCompleted && location.pathname !== '/profile') return <Navigate to="/profile" replace />
   return children
+}
+
+function RequireAdmin({ children }) {
+  const { user } = useAuth()
+  return user?.admin ? children : <Navigate to="/" replace />   // the server checks this too; this only hides the page
 }
 
 function GuestOnly({ children }) {
@@ -47,6 +53,7 @@ export default function App() {
       <Route path="/login" element={<GuestOnly><LoginPage /></GuestOnly>} />
       <Route path="/register" element={<GuestOnly><RegisterPage /></GuestOnly>} />
       <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+      <Route path="/admin" element={<RequireAuth><RequireAdmin><AdminPage /></RequireAdmin></RequireAuth>} />
       <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

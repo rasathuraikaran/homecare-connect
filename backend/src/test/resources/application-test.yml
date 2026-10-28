@@ -9,3 +9,8 @@ spring:
 app:
   uploads:
     dir: ${java.io.tmpdir}/homecare-test-uploads
+  email:
+    admin-to: alerts@homecare.test
+    admin-url: http://localhost:5173/admin
+  notifications:
+    scheduler-enabled: false

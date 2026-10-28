@@ -9,10 +9,13 @@
 #   ./start-service.sh status
 #   ./start-service.sh logs [db|backend|frontend]
 #   ./start-service.sh seed-demo      add demo accounts to a running app
+#   ./start-service.sh make-admin you@example.com   let that account open the Admin page (add --remove to undo)
 #   ./start-service.sh reset-db       DELETE all data and begin with an empty database
 #
 # Needs: Docker (running), Java 17+, Node 18+. Maven is downloaded for you (backend/mvnw).
 # Optional: GOOGLE_CLIENT_ID=... enables "Continue with Google".
+# Optional: put secrets in a file named .env.local next to this script (it is git-ignored), for example
+# the EMAIL_* settings that switch on real email alerts to the admin (or WHATSAPP_* for WhatsApp). See README.md.
 # Ports can be changed with DB_PORT, BACKEND_PORT and FRONTEND_PORT.
 # Works on macOS and Linux. On Windows, run it inside WSL or Git Bash.
 
@@ -23,11 +26,6 @@ BACKEND_DIR="$ROOT/backend"
 FRONTEND_DIR="$ROOT/frontend"
 RUN_DIR="$ROOT/.run"
 
-export DB_PORT="${DB_PORT:-5434}"
-BACKEND_PORT="${BACKEND_PORT:-8081}"
-FRONTEND_PORT="${FRONTEND_PORT:-5173}"
-DB_CONTAINER="homecare-db"
-DEMO_PASSWORD="${DEMO_PASSWORD:-demo-pass-123}"
 
 if [ -t 1 ]; then
   BOLD=$'\033[1m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RED=$'\033[31m'; DIM=$'\033[2m'; RESET=$'\033[0m'
@@ -38,6 +36,35 @@ say()  { printf '%s\n' "${BOLD}$*${RESET}"; }
 ok()   { printf '%s\n' "${GREEN}✔${RESET} $*"; }
 warn() { printf '%s\n' "${YELLOW}!${RESET} $*"; }
 die()  { printf '%s\n' "${RED}✖ $*${RESET}" >&2; exit 1; }
+
+# Reads KEY=value lines from a file WITHOUT running it as shell code, so spaces, $ or quotes in a value
+# cannot break or hijack the script. A setting already present in the environment wins over the file.
+load_env_file() {
+  local file="$1" line key value
+  [ -f "$file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in ''|'#'*) continue ;; esac
+    case "$line" in *=*) ;; *) warn "Ignored a line in $(basename "$file") that is not KEY=value"; continue ;; esac
+    key="${line%%=*}"
+    value="${line#*=}"
+    if ! [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then warn "Ignored an invalid setting name in $(basename "$file")"; continue; fi
+    case "$value" in
+      \"*\") value="${value#\"}"; value="${value%\"}" ;;
+      \'*\') value="${value#\'}"; value="${value%\'}" ;;
+    esac
+    if [ -z "${!key+x}" ]; then export "$key=$value"; fi
+  done <"$file"
+}
+
+load_env_file "$ROOT/.env.local"
+
+export DB_PORT="${DB_PORT:-5434}"
+BACKEND_PORT="${BACKEND_PORT:-8081}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+DB_CONTAINER="homecare-db"
+DEMO_PASSWORD="${DEMO_PASSWORD:-demo-pass-123}"
 
 mkdir -p "$RUN_DIR"
 
@@ -125,11 +152,18 @@ stop_proc() {
   rm -f "$f"
 }
 
+# Show the actual reason a program stopped, not a wall of stack trace
+explain_failure() {
+  local log="$1" reason
+  reason=$(grep -E 'IllegalStateException:|^Description:|^Action:|Port [0-9]+ was already in use|Address already in use' "$log" 2>/dev/null | tail -n 3 | cut -c1-300 || true)
+  if [ -n "$reason" ]; then printf '%s\n' "$reason" | sed 's/^/  /'; else tail -n 15 "$log" 2>/dev/null || true; fi
+}
+
 wait_http() { # url name seconds
   local i code
   for i in $(seq 1 "$3"); do
     if ! is_up "$2"; then
-      tail -n 30 "$RUN_DIR/$2.log" 2>/dev/null || true
+      explain_failure "$RUN_DIR/$2.log"
       die "The $2 stopped unexpectedly. Full log: .run/$2.log"
     fi
     code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "$1" || true)
@@ -240,8 +274,21 @@ start_all() {
   echo "  Backend API:   http://localhost:$BACKEND_PORT/api"
   echo "  Logs:          ./start-service.sh logs   ${DIM}(or look in .run/)${RESET}"
   echo "  Stop:          ./start-service.sh stop"
+  echo
+  local channel enabled
+  channel="$(printf '%s' "${NOTIFY_CHANNEL:-email}" | tr '[:upper:]' '[:lower:]')"
+  if [ "$channel" = "whatsapp" ]; then
+    enabled="${WHATSAPP_ENABLED:-false}"
+  else
+    channel="email"
+    enabled="${EMAIL_ENABLED:-false}"
+  fi
+  if [ "$enabled" = "true" ]; then
+    echo "  Admin alerts:  ${BOLD}ON${RESET} ${DIM}(by $channel)${RESET}"
+  else
+    echo "  Admin alerts:  ${BOLD}$channel test mode${RESET} ${DIM}(messages are only written to .run/backend.log, nothing is sent)${RESET}"
+  fi
   if [ -z "$(google_client_id)" ]; then
-    echo
     warn "Google sign-in is off (no GOOGLE_CLIENT_ID). Email sign-up and login work normally."
   fi
 }
@@ -286,6 +333,24 @@ reset_db() {
   echo "  (Uploaded photos in backend/uploads were not touched.)"
 }
 
+# Admin accounts can only be created here, never through the website, so nobody can sign up as admin.
+make_admin() {
+  local email="${1:-}" value="true" ids
+  [ -n "$email" ] || die "Usage: ./start-service.sh make-admin you@example.com   (add --remove to undo)"
+  if [ "${2:-}" = "--remove" ]; then value="false"; fi
+  command -v docker >/dev/null 2>&1 || die "Docker is not installed."
+  docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER" || die "The database is not running. Start the app first: ./start-service.sh"
+  # the email goes in as a psql variable, never pasted into the SQL text
+  ids=$(printf '%s\n' "update users set is_admin = $value where lower(email) = lower(:'email') returning id;" \
+    | docker exec -i "$DB_CONTAINER" psql -q -tA -U homecare -d homecare -v ON_ERROR_STOP=1 -v email="$email" || true)
+  [ -n "$ids" ] || die "No account with the email $email. Register it in the app first, then run this again."
+  if [ "$value" = "true" ]; then
+    ok "$email is now an admin. Sign in with that account and open the Admin link at the top of the page."
+  else
+    ok "$email is no longer an admin."
+  fi
+}
+
 # Demo accounts: handy for showing the app to someone. They only exist on this computer.
 API="http://localhost:$BACKEND_PORT/api"
 
@@ -328,7 +393,7 @@ seed_demo() {
 }
 
 usage() {
-  sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//'
+  awk 'NR < 3 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
 }
 
 # ---------------------------------------------------------------- main
@@ -341,6 +406,7 @@ case "$cmd" in
   status)     status ;;
   logs)       logs "${2:-backend}" ;;
   seed-demo)  seed_demo ;;
+  make-admin) make_admin "${2:-}" "${3:-}" ;;
   reset-db)   reset_db ;;
   -h|--help|help) usage ;;
   *)          usage; exit 1 ;;

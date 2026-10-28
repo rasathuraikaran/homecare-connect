@@ -3,7 +3,7 @@ import { formatMoney, ratesList } from '../constants/rates'
 import { Stethoscope } from './Icons'
 import { RatingSummary } from './ReviewList'
 
-export default function CaregiverCard({ caregiver: c, onOpenReviews }) {
+export default function CaregiverCard({ caregiver: c, onOpenReviews, onRequest }) {
   const initials = c.fullName.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
   const tags = (c.qualification ?? '').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 4)
   const facts = [
@@ -30,6 +30,7 @@ export default function CaregiverCard({ caregiver: c, onOpenReviews }) {
       ) : (
         <p className="facts ghost">Charges not listed</p>
       )}
+      <button type="button" className="btn-primary card-cta" onClick={() => onRequest(c)}>Request {c.fullName.split(' ')[0]}</button>
     </article>
   )
 }

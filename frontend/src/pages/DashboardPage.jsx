@@ -17,6 +17,7 @@ export default function DashboardPage() {
         <div className="user">
           <Avatar user={user} initials={initials} />
           <span className="user-meta"><strong>{user.fullName}</strong><em>{isCaregiver ? 'Caregiver' : 'Care seeker'}</em></span>
+          {user.admin && <Link className="btn-ghost" to="/admin">Admin</Link>}
           {isCaregiver && <Link className="btn-ghost" to="/profile">Edit profile</Link>}
           <button className="btn-ghost" onClick={logout}>Sign out</button>
         </div>
