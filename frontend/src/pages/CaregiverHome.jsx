@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import { Alert, Arrow, Bulb, Check } from '../components/Icons'
 import ProfilePreview from '../components/ProfilePreview'
 import ReviewList, { RatingSummary } from '../components/ReviewList'
+import VerificationCard from '../components/VerificationCard'
 import { COMPLETENESS_ITEMS, GENERIC_TIP, TIPS, completeness } from '../constants/completeness'
 
 export default function CaregiverHome({ firstName }) {
@@ -43,6 +44,7 @@ export default function CaregiverHome({ firstName }) {
 
 function Loaded({ profile }) {
   const [available, setAvailable] = useState(profile.available)
+  const [verified, setVerified] = useState(profile.verified)
   const [toggleError, setToggleError] = useState('')
   const [toggling, setToggling] = useState(false)
   const [reviews, setReviews] = useState(null)
@@ -77,13 +79,17 @@ function Loaded({ profile }) {
           <div>
             <h2>{available ? 'You are available for work' : 'You are not available right now'}</h2>
             <p className="muted small">
-              {available ? 'Families can find you when they search.' : 'You are hidden from search until you switch this back on.'}
+              {!verified
+                ? 'Families cannot see you until your documents are approved. See Verification below.'
+                : available ? 'Families can find you when they search.' : 'You are hidden from search until you switch this back on.'}
             </p>
             {toggleError && <p className="error-text small" role="alert">{toggleError}</p>}
           </div>
           <button type="button" role="switch" aria-checked={available} aria-label="Available for work"
                   className="switch" disabled={toggling} onClick={toggle}><span /></button>
         </section>
+
+        <VerificationCard onStatus={setVerified} />
 
         <section className="block">
           <div className="block-head">

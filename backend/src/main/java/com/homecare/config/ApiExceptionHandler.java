@@ -51,7 +51,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<ErrorResponse> tooLarge(MaxUploadSizeExceededException e) {
-        return ResponseEntity.status(413).body(new ErrorResponse("Photo is too large (max 2 MB)"));
+        return ResponseEntity.status(413).body(new ErrorResponse("That file is too large. Photos can be up to 2 MB and documents up to 5 MB."));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -455,3 +455,21 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .admin-actions { display: inline-flex; flex-wrap: wrap; gap: .5rem; }
 .alert-state .link { font-size: .85rem; }
 .alert-state .link:disabled { opacity: .6; cursor: progress; }
+
+.verified-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .6rem; font-size: .78rem; font-weight: 600; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 999px; }
+.verified-chip svg { width: 14px; height: 14px; }
+
+.doc-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .75rem; }
+.doc-row { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem 1rem; padding: .85rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); }
+.doc-main { display: grid; flex: 1 1 240px; gap: .15rem; min-width: 0; overflow-wrap: anywhere; }
+.doc-side { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.doc-reject { flex: 1 1 100%; display: grid; gap: .6rem; padding-top: .75rem; border-top: 1px dashed var(--line); }
+.doc-reject label { display: grid; gap: .35rem; font-size: .88rem; color: var(--ink-2); }
+.doc-reject input { height: 42px; padding: 0 .8rem; font: inherit; color: var(--ink); border: 1.5px solid var(--line); border-radius: var(--radius); }
+.doc-reject-actions { display: flex; align-items: center; gap: .9rem; }
+
+.admin-tabs { display: flex; gap: .25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--line); }
+.admin-tab { display: inline-flex; align-items: center; gap: .45rem; padding: .6rem 1rem; margin-bottom: -1px; color: var(--ink-2); border-bottom: 2px solid transparent; }
+.admin-tab:hover { text-decoration: none; color: var(--ink); }
+.admin-tab.on { color: var(--brand-text); border-bottom-color: var(--brand-600); }
+.count-badge { min-width: 20px; padding: 0 .35rem; font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; color: #fff; background: var(--danger); border-radius: 999px; }

@@ -1,6 +1,6 @@
 import { jobLabel } from '../constants/jobs'
 import { formatMoney, ratesList } from '../constants/rates'
-import { Stethoscope } from './Icons'
+import { Check, Stethoscope } from './Icons'
 import { RatingSummary } from './ReviewList'
 
 export default function CaregiverCard({ caregiver: c, onOpenReviews, onRequest }) {
@@ -21,6 +21,7 @@ export default function CaregiverCard({ caregiver: c, onOpenReviews, onRequest }
         <RatingSummary average={c.rating} count={c.reviewCount} />
       </button>
       <span className="pt-chip"><Stethoscope />{jobLabel(c.jobType)}</span>
+      <span className="verified-chip"><Check />Documents verified</span>
       <p className={facts.length ? 'facts' : 'facts ghost'}>{facts.length ? facts.join(' · ') : 'Experience not shared yet'}</p>
       {tags.length > 0 && <div className="tags">{tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
       {priced.length > 0 ? (

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -19,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AvailabilityAndReviewsTest {
 
     @Autowired MockMvc mvc;
+    @Autowired JdbcTemplate jdbc;
 
     private String[] register(String email, String name, String role) throws Exception {
         String res = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
@@ -31,6 +33,8 @@ class AvailabilityAndReviewsTest {
         String[] cg = register(email, name, "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg[0]).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fullName\":\"%s\",\"jobType\":\"%s\"}".formatted(name, job))).andExpect(status().isOk());
+        // only verified caregivers are listed; document approval has its own tests, so this shortcuts it
+        jdbc.update("update caregiver_profiles set verified = true where user_id = ?", Long.parseLong(cg[1]));
         return cg;
     }
 

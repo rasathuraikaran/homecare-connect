@@ -385,6 +385,11 @@ seed_demo() {
   add_caregiver ravi@demo.local  "Ravi Kumar"    CARETAKER        12 45 "Elderly care certificate, Dementia care"      '{"HOURLY":1200,"DAILY":6000,"FULL_DAY_NIGHT":12000}'
   add_caregiver sara@demo.local  "Sara Thomas"   CARETAKER        4  31 "First aid certified"                          '{"SESSION":2500,"DAILY":5500}'
   add_caregiver dev@demo.local   "Dev Anand"     PHYSIOTHERAPIST  6  38 "Physiotherapy assistant"                      '{"SESSION":3500,"HOURLY":2500}'
+  # Families only see caregivers whose documents an admin approved. Demo caregivers have no documents, so mark them verified
+  # straight in the database (only this script can do that, never the website or the API).
+  echo "UPDATE caregiver_profiles SET verified = TRUE WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@demo.local');" \
+    | docker exec -i "$DB_CONTAINER" psql -q -tA -U homecare -d homecare -v ON_ERROR_STOP=1 >/dev/null \
+    || warn "Could not mark the demo caregivers as verified, so families will not see them."
   local seeker; seeker=$(token_for seeker@demo.local "Demo Seeker" CARE_SEEKER)
   if [ -n "$seeker" ]; then ok "Demo Seeker  (seeker@demo.local)"; else warn "Could not create the demo care seeker."; fi
   echo

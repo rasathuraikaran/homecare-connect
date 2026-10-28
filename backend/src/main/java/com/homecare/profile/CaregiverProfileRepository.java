@@ -11,11 +11,11 @@ public interface CaregiverProfileRepository extends JpaRepository<CaregiverProfi
 
     /** Rows of [CaregiverProfile, fullName], most experienced first. */
     @Query("select p, u.fullName from CaregiverProfile p, User u "
-            + "where u.id = p.userId and p.jobType = :job and p.available = true "
+            + "where u.id = p.userId and p.jobType = :job and p.available = true and p.verified = true "
             + "order by p.experienceYears desc nulls last, p.updatedAt desc")
     List<Object[]> findCards(@Param("job") JobType job, Pageable pageable);
 
     /** Rows of [JobType, count]. */
-    @Query("select p.jobType, count(p) from CaregiverProfile p where p.jobType is not null and p.available = true group by p.jobType")
+    @Query("select p.jobType, count(p) from CaregiverProfile p where p.jobType is not null and p.available = true and p.verified = true group by p.jobType")
     List<Object[]> countByJobType();
 }

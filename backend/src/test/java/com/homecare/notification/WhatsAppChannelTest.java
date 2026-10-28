@@ -83,6 +83,7 @@ class WhatsAppChannelTest {
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", nina[0]).contentType(JSON)
                         .content("{\"fullName\":\"Nina Fernando\",\"jobType\":\"NURSING\",\"rates\":{\"DAILY\":9000}}"))
                 .andExpect(status().isOk());
+        jdbc.update("update caregiver_profiles set verified = true where user_id = ?", Long.parseLong(nina[1]));   // only verified caregivers can be requested
         String[] seeker = register("wa-seeker@test.com", "Sam Seeker", "CARE_SEEKER");
         String[] admin = register("wa-admin@test.com", "Admin Person", "CARE_SEEKER");
         jdbc.update("update users set is_admin = true where email = ?", "wa-admin@test.com");

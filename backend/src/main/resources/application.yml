@@ -8,8 +8,8 @@ spring:
     password: ${DB_PASSWORD:homecare}
   servlet:
     multipart:
-      max-file-size: 3MB
-      max-request-size: 3MB
+      max-file-size: 6MB   # documents may be 5 MB; DocumentStorage and PhotoStorage enforce their own limits
+      max-request-size: 6MB
   jpa:
     hibernate:
       ddl-auto: validate

@@ -40,9 +40,9 @@ cd frontend && npm install && npm run dev     # UI on :5173 (proxies /api to :80
 ## What it does
 
 - Two kinds of account: **care seeker** (light blue pages) and **caregiver** (green pages), with email and password or Google sign-in.
-- **Caregivers** build a profile (job, photo, experience, qualifications, charges per hour / session / day / full day and night), see how complete it is, switch availability on or off, and read their reviews.
+- **Caregivers** build a profile (job, photo, experience, qualifications, charges per hour / session / day / full day and night), upload the documents their job needs (see below), see how complete the profile is, switch availability on or off, and read their reviews.
 - **Care seekers** pick Caretaker, Nurse or Physiotherapist, browse caregiver cards with prices and ratings, leave a review, and **request** a caregiver.
-- **Admin** gets an email for every request (or a WhatsApp message, if you prefer) and follows it up on the Admin page (see below).
+- **Admin** gets an email for every request (or a WhatsApp message, if you prefer) and follows it up on the Admin page (see below). The Admin page also has a **Verification** tab for checking caregivers' documents.
 
 ## Booking requests and alerts for the admin
 
@@ -135,6 +135,26 @@ Set `NOTIFY_CHANNEL=whatsapp` and the alerts go to WhatsApp instead of email (on
 Meta charges per message and its prices and rules change, so check their current pricing page for your country. The token is never written to logs, and `.env.local` is git-ignored.
 
 Not built yet: delivery receipts and replies from WhatsApp (webhooks), and alerts when a seeker cancels. Alerts are sent by a single backend process; running several backends needs a lock around the sender.
+
+## Caregiver documents and verification
+
+Care seekers only see caregivers whose **required** documents an admin has approved. Everyone else stays hidden and cannot be requested.
+
+| Job | Required | Optional |
+|---|---|---|
+| Caretaker | NIC | Grama Niladhari (GS) letter |
+| Nursing | Nursing qualification certificate | NIC |
+| Physiotherapist | Degree certificate | NIC |
+
+1. A caregiver saves their profile with a job, then uploads the documents on their dashboard (**Verification** card). JPG, PNG, WebP or PDF, up to 5 MB. A file is checked by its content, not by its name.
+2. An admin opens **Admin, Verification**, views each file, and approves it or rejects it with a reason. The caregiver sees the reason and uploads the file again; a new upload always starts as waiting for review.
+3. When every required document is approved the caregiver appears in search, with a "Documents verified" mark. Optional documents are reviewed too but never decide this. Changing job changes what is required.
+
+The list of what each job needs is in one place, `DocumentType` in `backend/src/main/java/com/homecare/verification`.
+
+**Privacy.** An NIC is sensitive. Documents are saved on the server's disk in `uploads/documents` (git-ignored; `UPLOADS_DIR` moves it), are never served from a public address (profile photos are, documents are not), and only an admin can open one, through the Admin page. Replaced or removed files are deleted. Who may hold these files, for how long, and how they are backed up still needs your decision (and, for real users, a check against Sri Lanka's data protection rules) before you go live.
+
+**Demo accounts.** `./start-service.sh seed-demo` marks the `@demo.local` caregivers as verified so you can browse them. After upgrading an existing database, run it again; any other caregiver has to upload documents and be approved.
 
 ## Google sign-in (optional)
 

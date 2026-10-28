@@ -42,6 +42,10 @@ public class CaregiverProfile {
     @Column(name = "photo_file")
     private String photoFile;
 
+    /** True once an admin approved every document the job requires. Only verified caregivers are shown to families. */
+    @Column(nullable = false)
+    private boolean verified;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
@@ -72,6 +76,11 @@ public class CaregiverProfile {
         this.updatedAt = Instant.now();
     }
 
+    /** Set by the verification service from the documents, never from a request. */
+    public void setVerified(boolean verified) {
+        this.verified = verified;
+    }
+
     public String photoUrl() {
         return photoFile == null ? null : "/api/files/photos/" + photoFile;
     }
@@ -83,6 +92,7 @@ public class CaregiverProfile {
     /** Charges in a stable (declaration) order. Call inside a transaction. */
     public Map<RateType, BigDecimal> getRates() { return new TreeMap<>(rates); }
     public boolean isAvailable() { return available; }
+    public boolean isVerified() { return verified; }
     public JobType getJobType() { return jobType; }
     public String getPhotoFile() { return photoFile; }
 }

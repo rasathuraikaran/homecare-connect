@@ -25,7 +25,7 @@ public final class ProfileDtos {
 
     public record ProfileResponse(String fullName, Integer age, Integer experienceYears,
                                   String qualification, JobType jobType,
-                                  Map<RateType, BigDecimal> rates, boolean available, String photoUrl) {}
+                                  Map<RateType, BigDecimal> rates, boolean available, String photoUrl, boolean verified) {}
 
     public record AvailabilityRequest(@NotNull(message = "Say whether you are available") Boolean available) {}
 
