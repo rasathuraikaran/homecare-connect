@@ -63,4 +63,5 @@ public class User {
     public String getGoogleSub() { return googleSub; }
     public Role getRole() { return role; }
     public boolean isAdmin() { return admin; }
+    public Instant getCreatedAt() { return createdAt; }
 }

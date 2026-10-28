@@ -22,6 +22,7 @@ export default function AdminTabs() {
       <NavLink to="/admin/verification" className={tab}>
         Verification {waiting > 0 && <span className="count-badge" aria-label={`${waiting} waiting`}>{waiting}</span>}
       </NavLink>
+      <NavLink to="/admin/users" className={tab}>Accounts</NavLink>
     </nav>
   )
 }

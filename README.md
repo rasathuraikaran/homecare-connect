@@ -42,7 +42,7 @@ cd frontend && npm install && npm run dev     # UI on :5173 (proxies /api to :80
 - Two kinds of account: **care seeker** (light blue pages) and **caregiver** (green pages), with email and password or Google sign-in.
 - **Caregivers** build a profile (job, photo, experience, qualifications, charges per hour / session / day / full day and night), upload the documents their job needs (see below), see how complete the profile is, switch availability on or off, and read their reviews.
 - **Care seekers** pick Caretaker, Nurse or Physiotherapist, browse caregiver cards with prices and ratings, leave a review, and **request** a caregiver.
-- **Admin** gets an email for every request (or a WhatsApp message, if you prefer) and follows it up on the Admin page (see below). The Admin page also has a **Verification** tab for checking caregivers' documents.
+- **Admin** gets an email for every request (or a WhatsApp message, if you prefer) and follows it up on the Admin page (see below). The Admin page also has a **Verification** tab for checking caregivers' documents and an **Accounts** tab for finding and deleting caregiver and care seeker accounts.
 
 ## Booking requests and alerts for the admin
 
@@ -155,6 +155,19 @@ The list of what each job needs is in one place, `DocumentType` in `backend/src/
 **Privacy.** An NIC is sensitive. Documents are saved on the server's disk in `uploads/documents` (git-ignored; `UPLOADS_DIR` moves it), are never served from a public address (profile photos are, documents are not), and only an admin can open one, through the Admin page. Replaced or removed files are deleted. Who may hold these files, for how long, and how they are backed up still needs your decision (and, for real users, a check against Sri Lanka's data protection rules) before you go live.
 
 **Demo accounts.** `./start-service.sh seed-demo` marks the `@demo.local` caregivers as verified so you can browse them. After upgrading an existing database, run it again; any other caregiver has to upload documents and be approved.
+
+## Deleting an account (admin)
+
+On the Admin page open **Accounts**, find the person by name or email (or filter caregivers and care seekers), and press **Delete**. The page first shows what goes with the account and asks you to type their email before the button works.
+
+What is removed, for good:
+- the account and sign-in;
+- for a caregiver: the profile, charges, photo and uploaded documents (the files on disk too);
+- every booking request they made or received, with its alert, and every review they wrote or received.
+
+So deleting a caregiver also removes the requests care seekers made for them, and deleting a care seeker lowers the caregivers' review counts. The person is signed out at once and could sign up again later, as a new account. There is no "block but keep the history" option yet.
+
+Admin accounts cannot be deleted from the page, not even your own: first run `./start-service.sh make-admin EMAIL --remove`, then delete the account.
 
 ## Google sign-in (optional)
 

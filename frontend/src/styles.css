@@ -468,6 +468,16 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .doc-reject input { height: 42px; padding: 0 .8rem; font: inherit; color: var(--ink); border: 1.5px solid var(--line); border-radius: var(--radius); }
 .doc-reject-actions { display: flex; align-items: center; gap: .9rem; }
 
+.search-input { height: 40px; min-width: 240px; padding: 0 .85rem; font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); }
+.search-input:focus-visible { outline: none; border-color: var(--brand-600); box-shadow: var(--ring); }
+.delete-panel { flex: 1 1 100%; display: grid; gap: .6rem; padding: .9rem 1rem; background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: var(--radius); }
+.delete-panel strong { color: var(--danger); }
+.delete-panel label { display: grid; gap: .35rem; font-size: .88rem; color: var(--ink-2); }
+.delete-panel input { height: 40px; padding: 0 .8rem; font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--danger-line); border-radius: var(--radius); }
+.delete-list { margin: 0; padding-left: 1.2rem; display: grid; gap: .15rem; font-size: .9rem; }
+.btn-primary.danger-solid { background: var(--danger); }
+.btn-primary.danger-solid:hover:not(:disabled) { background: #991b1b; }
+
 .admin-tabs { display: flex; gap: .25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--line); }
 .admin-tab { display: inline-flex; align-items: center; gap: .45rem; padding: .6rem 1rem; margin-bottom: -1px; color: var(--ink-2); border-bottom: 2px solid transparent; }
 .admin-tab:hover { text-decoration: none; color: var(--ink); }

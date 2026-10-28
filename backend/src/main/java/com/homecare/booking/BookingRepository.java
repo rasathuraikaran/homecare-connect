@@ -12,6 +12,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     long countBySeekerIdAndStatus(Long seekerId, BookingStatus status);
 
+    long countBySeekerId(Long seekerId);
+
+    long countByCaregiverId(Long caregiverId);
+
+    long countBySeekerIdAndStatusIn(Long seekerId, Collection<BookingStatus> statuses);
+
+    long countByCaregiverIdAndStatusIn(Long caregiverId, Collection<BookingStatus> statuses);
+
     boolean existsBySeekerIdAndCaregiverIdAndStatusIn(Long seekerId, Long caregiverId, Collection<BookingStatus> statuses);
 
     /** Rows of [Booking, caregiver full name, caregiver job type], newest first. */

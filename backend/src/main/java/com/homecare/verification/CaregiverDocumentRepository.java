@@ -13,6 +13,8 @@ public interface CaregiverDocumentRepository extends JpaRepository<CaregiverDocu
 
     List<CaregiverDocument> findByUserId(Long userId);
 
+    long countByUserId(Long userId);
+
     Optional<CaregiverDocument> findByUserIdAndDocType(Long userId, DocumentType docType);
 
     List<CaregiverDocument> findByUserIdIn(Collection<Long> userIds);

@@ -24,4 +24,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     /** Rows of [caregiverId, average, count] for the caregivers that have reviews. */
     @Query("select r.caregiverId, avg(r.rating), count(r) from Review r where r.caregiverId in :ids group by r.caregiverId")
     List<Object[]> summaries(@Param("ids") Collection<Long> caregiverIds);
+
+    long countByReviewerId(Long reviewerId);
+
+    long countByCaregiverId(Long caregiverId);
 }
