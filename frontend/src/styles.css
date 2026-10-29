@@ -483,3 +483,14 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .admin-tab:hover { text-decoration: none; color: var(--ink); }
 .admin-tab.on { color: var(--brand-text); border-bottom-color: var(--brand-600); }
 .count-badge { min-width: 20px; padding: 0 .35rem; font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; color: #fff; background: var(--danger); border-radius: 999px; }
+
+.badges { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem; }
+.required-tag { padding: .1rem .5rem; font-size: .72rem; font-weight: 700; color: var(--danger); background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: 999px; }
+
+.rules { display: grid; gap: .9rem; margin-bottom: 1.5rem; }
+.rules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.rules-job { display: grid; align-content: start; gap: .6rem; }
+.rules-job h3 { margin: 0; font-size: 1rem; }
+.rule-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: var(--radius); }
+.rule-row .doc-main { gap: 0; }
+.rule-confirm { grid-column: 1 / -1; display: grid; gap: .5rem; padding: .7rem .8rem; background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: var(--radius); font-size: .9rem; }

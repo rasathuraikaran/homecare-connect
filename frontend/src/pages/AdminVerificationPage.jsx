@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, apiBlob } from '../api/client'
 import AdminShell from '../components/AdminShell'
+import DocumentRulesPanel from '../components/DocumentRulesPanel'
 import { Alert } from '../components/Icons'
 import StatusChip from '../components/StatusChip'
 import { jobLabel } from '../constants/jobs'
@@ -79,7 +80,9 @@ export default function AdminVerificationPage() {
   }
 
   return (
-    <AdminShell title="Caregiver verification" subtitle="Open each document, then approve it or say what is wrong. Caregivers are shown to families once their required documents are approved.">
+    <AdminShell title="Caregiver verification" subtitle="Open each document, then approve it or say what is wrong. Decide below which documents are mandatory for each job.">
+      <DocumentRulesPanel onChanged={() => load(true)} />
+
       <div className="admin-bar">
         <div className="filters" role="tablist">
           {FILTERS.map((f) => (

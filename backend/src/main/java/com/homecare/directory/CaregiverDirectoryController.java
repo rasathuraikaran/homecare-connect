@@ -1,6 +1,10 @@
-package com.homecare.profile;
+package com.homecare.directory;
 
+import com.homecare.profile.CaregiverProfile;
+import com.homecare.profile.CaregiverProfileRepository;
+import com.homecare.profile.JobType;
 import com.homecare.profile.ProfileDtos.CaregiverCard;
+import com.homecare.verification.VerificationBadges;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** What care seekers browse: caregivers grouped by the kind of work they do. */
+/** What care seekers browse: the caregivers families may see, grouped by the kind of work they do. */
 @RestController
 @RequestMapping("/api/caregivers")
 public class CaregiverDirectoryController {
@@ -26,10 +30,12 @@ public class CaregiverDirectoryController {
 
     private final CaregiverProfileRepository profiles;
     private final ReviewRepository reviews;
+    private final VerificationBadges badges;
 
-    public CaregiverDirectoryController(CaregiverProfileRepository profiles, ReviewRepository reviews) {
+    public CaregiverDirectoryController(CaregiverProfileRepository profiles, ReviewRepository reviews, VerificationBadges badges) {
         this.profiles = profiles;
         this.reviews = reviews;
+        this.badges = badges;
     }
 
     @GetMapping
@@ -44,13 +50,16 @@ public class CaregiverDirectoryController {
             for (Object[] r : reviews.summaries(ids)) ratings.put((Long) r[0], r);
         }
 
+        Map<Long, List<String>> marks = badges.forCaregivers(rows.stream().map(r -> (CaregiverProfile) r[0]).toList());
+
         return rows.stream().map(row -> {
             CaregiverProfile p = (CaregiverProfile) row[0];
             Object[] rating = ratings.get(p.getUserId());
             Double average = rating == null ? null : BigDecimal.valueOf((Double) rating[1]).setScale(1, RoundingMode.HALF_UP).doubleValue();
             long count = rating == null ? 0 : (Long) rating[2];
             return new CaregiverCard(p.getUserId(), (String) row[1], p.getAge(), p.getExperienceYears(),
-                    p.getQualification(), p.getJobType(), p.getRates(), p.photoUrl(), average, count);
+                    p.getQualification(), p.getJobType(), p.getRates(), p.photoUrl(), average, count,
+                    marks.getOrDefault(p.getUserId(), List.of()));
         }).toList();
     }
 

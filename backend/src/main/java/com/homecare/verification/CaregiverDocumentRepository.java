@@ -19,6 +19,8 @@ public interface CaregiverDocumentRepository extends JpaRepository<CaregiverDocu
 
     List<CaregiverDocument> findByUserIdIn(Collection<Long> userIds);
 
+    List<CaregiverDocument> findByUserIdInAndStatus(Collection<Long> userIds, DocumentStatus status);
+
     @Query("select distinct d.userId from CaregiverDocument d where d.status = :status")
     List<Long> userIdsWithStatus(@Param("status") DocumentStatus status, Pageable pageable);
 

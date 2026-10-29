@@ -81,6 +81,6 @@ public class ProfileService {
 
     private ProfileResponse toResponse(User user, CaregiverProfile p) {
         if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null, false);
-        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.getRates(), p.isAvailable(), p.photoUrl(), p.isVerified());
+        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed());
     }
 }

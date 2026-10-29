@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { Check } from './Icons'
 import StatusChip from './StatusChip'
-import { DOCUMENT_FILE_TYPES, DOC_LABEL, DOC_TONE, HEADLINE, MAX_DOCUMENT } from '../constants/verification'
+import { DOCUMENT_FILE_TYPES, DOC_LABEL, DOC_TONE, HEADLINE, MAX_DOCUMENT, isListed } from '../constants/verification'
 
 /** The caregiver's checklist of documents. onStatus(true/false) tells the page whether families can see them yet. */
 export default function VerificationCard({ onStatus }) {
@@ -15,12 +15,13 @@ export default function VerificationCard({ onStatus }) {
   const fileRef = useRef(null)
   const target = useRef(null)
 
-  // after an upload or removal the server has recomputed whether families can see the caregiver, so tell the page
-  const apply = (v) => { setView(v); onStatus?.(v.status === 'VERIFIED') }
+  // the server decides whether families can see the caregiver, so tell the page whenever it answers
+  const apply = (v) => { setView(v); onStatus?.(isListed(v.status)) }
   const fail = (type, message) => setRowError((r) => ({ ...r, [type]: message }))
 
   useEffect(() => {
-    api('/caregivers/me/verification').then(setView).catch((e) => setError(e.message))
+    api('/caregivers/me/verification').then(apply).catch((e) => setError(e.message))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function pick(type) {
@@ -81,7 +82,7 @@ export default function VerificationCard({ onStatus }) {
           {view.documents.map((d) => (
             <li key={d.type} className="doc-row">
               <div className="doc-main">
-                <strong>{d.label} {!d.required && <span className="optional">Optional</span>}</strong>
+                <strong>{d.label} {d.required ? <span className="required-tag">Required</span> : <span className="optional">Optional</span>}</strong>
                 <span className="muted small">{d.hint}</span>
                 {d.status === 'REJECTED' && d.rejectReason && <span className="error-text small">Rejected: {d.rejectReason}</span>}
                 {rowError[d.type] && <span className="error-text small" role="alert">{rowError[d.type]}</span>}

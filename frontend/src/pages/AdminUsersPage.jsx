@@ -100,7 +100,7 @@ export default function AdminUsersPage() {
                   {u.role === 'CAREGIVER' && (
                     <>
                       {u.job && <span className="status-chip off">{jobLabel(u.job)}</span>}
-                      <StatusChip label={u.verified ? 'Verified' : 'Not verified'} tone={u.verified ? 'ok' : 'wait'} />
+                      <StatusChip label={u.listed ? 'Visible to families' : 'Hidden from families'} tone={u.listed ? 'ok' : 'wait'} />
                     </>
                   )}
                   {u.admin ? (

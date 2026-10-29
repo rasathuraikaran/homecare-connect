@@ -84,8 +84,6 @@ class BookingFlowTest {
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg[0]).contentType(JSON)
                 .content("{\"fullName\":\"%s\",\"jobType\":\"NURSING\",\"rates\":{\"HOURLY\":1800,\"DAILY\":9000}}".formatted(name)))
                 .andExpect(status().isOk());
-        // only verified caregivers can be requested; document approval has its own tests, so this shortcuts it
-        jdbc.update("update caregiver_profiles set verified = true where user_id = ?", Long.parseLong(cg[1]));
         return cg;
     }
 

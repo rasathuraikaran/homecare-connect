@@ -25,6 +25,19 @@ public final class VerificationDtos {
 
     public record Summary(int needsReview) {}
 
+    /** One document a job can take, and whether the admin made it mandatory. */
+    public record RequirementView(JobType job, DocumentType type, String label, String hint, boolean required) {}
+
+    /** How many caregivers would disappear from, or appear in, the families' list if a document were made mandatory (or optional). */
+    public record Impact(int willHide, int willShow) {}
+
+    public record SetRequirementRequest(
+            @NotNull(message = "Choose a job") JobType job,
+            @NotNull(message = "Choose a document") DocumentType type,
+            @NotNull(message = "Say whether it is mandatory") Boolean required) {}
+
+    public record RequirementChange(List<RequirementView> requirements, int hidden, int shown) {}
+
     /** revision says which upload the admin looked at, so a file that was replaced since cannot be approved unseen. */
     public record ReviewRequest(
             @NotNull(message = "Choose approve or reject") DocumentStatus status,

@@ -38,7 +38,7 @@ public class BookingService {
     @Transactional
     public BookingResponse create(User seeker, CreateBookingRequest req) {
         CaregiverProfile profile = profiles.findById(req.caregiverId())
-                .filter(p -> p.getJobType() != null && p.isVerified())   // an unverified caregiver looks the same as one that does not exist
+                .filter(p -> p.getJobType() != null && p.isListed())   // a caregiver families may not see looks the same as one that does not exist
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Caregiver not found"));
         if (!profile.isAvailable()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This caregiver is not available right now");

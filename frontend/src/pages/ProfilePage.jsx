@@ -3,9 +3,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
+import StatusChip from '../components/StatusChip'
 import { Activity, Alert, Heart, HeartHouse, Stethoscope } from '../components/Icons'
 import { JOBS } from '../constants/jobs'
 import { CURRENCY, RATE_TYPES } from '../constants/rates'
+import { DOCUMENT_FILE_TYPES, DOC_LABEL, DOC_TONE, MAX_DOCUMENT } from '../constants/verification'
 import ProfilePreview from '../components/ProfilePreview'
 
 const MAX_PHOTO = 2 * 1024 * 1024
@@ -34,6 +36,11 @@ export default function ProfilePage() {
   const bannerRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [loaded, setLoaded] = useState(firstTime)
+  const docRef = useRef(null)
+  const docTarget = useRef(null)
+  const [requirements, setRequirements] = useState([])   // what each job can upload, and whether the admin made it mandatory
+  const [savedDocs, setSavedDocs] = useState({})         // type -> what is already uploaded
+  const [newDocs, setNewDocs] = useState({})             // type -> file chosen now, uploaded when the form is saved
 
   useEffect(() => {
     if (firstTime) return
@@ -42,6 +49,14 @@ export default function ProfilePage() {
         rates: Object.fromEntries(Object.entries(p.rates ?? {}).map(([k, v]) => [k, String(v)])) })
       setPhotoUrl(p.photoUrl)
     }).catch((e) => setServerIssues([e.message])).finally(() => setLoaded(true))
+  }, [firstTime])
+
+  useEffect(() => {
+    api('/document-requirements').then(setRequirements).catch(() => setRequirements([]))
+    if (firstTime) return
+    api('/caregivers/me/verification')
+      .then((v) => setSavedDocs(Object.fromEntries(v.documents.filter((d) => d.status).map((d) => [d.type, d]))))
+      .catch(() => {})
   }, [firstTime])
 
   // Arriving from a "Set your charges" style link: scroll to that section and highlight it briefly
@@ -104,6 +119,23 @@ export default function ProfilePage() {
     setForm({ ...form, qualification: [...items, text].join(', ').slice(0, 255) })
   }
 
+  // The documents this job can take, mandatory ones first
+  const docRows = requirements.filter((r) => r.job === form.jobType).sort((a, b) => Number(b.required) - Number(a.required))
+
+  function pickDocument(type) {
+    docTarget.current = type
+    docRef.current.click()
+  }
+
+  function acceptDocument(file) {
+    const type = docTarget.current
+    if (!file || !type) return
+    if (!DOCUMENT_FILE_TYPES.includes(file.type)) return showServerIssues(['A document must be a JPG, PNG, WebP or PDF file'])
+    if (file.size > MAX_DOCUMENT) return showServerIssues(['A document must be 5 MB or smaller'])
+    setServerIssues([])
+    setNewDocs((d) => ({ ...d, [type]: file }))
+  }
+
   async function submit(e) {
     e.preventDefault()
     setServerIssues([])
@@ -126,7 +158,27 @@ export default function ProfilePage() {
       } else if (removePhoto && photoUrl) {
         await api('/caregivers/me/photo', { method: 'DELETE' })
       }
+      // documents go up after the profile exists, one by one, so a bad file does not lose the rest
+      const failed = []
+      const left = {}
+      for (const row of docRows) {
+        const file = newDocs[row.type]
+        if (!file) continue
+        try {
+          const fd = new FormData()
+          fd.append('file', file)
+          await api(`/caregivers/me/documents/${row.type}`, { method: 'POST', form: fd })
+        } catch (err) {
+          failed.push(`${row.label}: ${err.message}`)
+          left[row.type] = file
+        }
+      }
       await refresh()
+      if (failed.length) {
+        setNewDocs(left)
+        showServerIssues(['Your profile was saved, but some documents did not upload:', ...failed])
+        return
+      }
       navigate('/')
     } catch (err) {
       showServerIssues(err.errors?.length ? err.errors : [err.message])
@@ -259,6 +311,47 @@ export default function ProfilePage() {
                   )
                 })}
               </div>
+            </section>
+
+            <section id="documents" className="section span-wide">
+              <h2>Documents {!docRows.some((r) => r.required) && <span className="optional">Optional</span>}</h2>
+              <p className="hint">
+                Our team checks each document you add. An approved one earns a verified mark on your card.
+                {docRows.some((r) => r.required) && ' Families can see you only once the ones marked Required are approved.'}
+              </p>
+              {!form.jobType ? (
+                <p className="muted small">Choose what you do above to see which documents you can add.</p>
+              ) : (
+                <ul className="doc-list">
+                  {docRows.map((r) => {
+                    const saved = savedDocs[r.type]
+                    const queued = newDocs[r.type]
+                    return (
+                      <li key={r.type} className="doc-row">
+                        <div className="doc-main">
+                          <strong>{r.label} {r.required ? <span className="required-tag">Required</span> : <span className="optional">Optional</span>}</strong>
+                          <span className="muted small">{r.hint}</span>
+                          {queued && <span className="small">Ready to upload when you save: {queued.name}</span>}
+                          {saved?.status === 'REJECTED' && saved.rejectReason && <span className="error-text small">Rejected: {saved.rejectReason}</span>}
+                        </div>
+                        <div className="doc-side">
+                          {saved && !queued && <StatusChip label={DOC_LABEL[saved.status]} tone={DOC_TONE[saved.status]} />}
+                          <button type="button" className="btn-ghost small-btn" onClick={() => pickDocument(r.type)}>
+                            {queued || saved ? 'Choose another file' : 'Choose file'}
+                          </button>
+                          {queued && (
+                            <button type="button" className="link small"
+                                    onClick={() => setNewDocs((d) => Object.fromEntries(Object.entries(d).filter(([k]) => k !== r.type)))}>Remove</button>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <span className="hint">JPG, PNG, WebP or PDF, up to 5 MB. Only our team can open your documents.</span>
+              <input ref={docRef} type="file" accept={DOCUMENT_FILE_TYPES.join(',')} hidden
+                     onChange={(e) => { acceptDocument(e.target.files[0]); e.target.value = '' }} />
             </section>
 
             <div className="actions">

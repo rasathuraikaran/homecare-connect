@@ -56,7 +56,6 @@ class AdminUserFlowTest {
                 .header("Authorization", cg[0])).andExpect(status().isOk());
         mvc.perform(multipart("/api/caregivers/me/documents/NIC").file(new MockMultipartFile("file", "nic.png", "image/png", PNG))
                 .header("Authorization", cg[0])).andExpect(status().isOk());
-        jdbc.update("update caregiver_profiles set verified = true where user_id = ?", Long.parseLong(cg[1]));
         return cg;
     }
 
@@ -124,10 +123,10 @@ class AdminUserFlowTest {
         String caregivers = mvc.perform(get("/api/admin/users").param("role", "CAREGIVER").param("q", "au-find").header("Authorization", admin[0]))
                 .andReturn().getResponse().getContentAsString();
         assertEquals(List.of("CAREGIVER", "CAREGIVER"), JsonPath.read(caregivers, "$[*].role"));
-        // a caregiver's job and verified flag come along, and admins are marked
+        // a caregiver's job and whether families can see them come along, and admins are marked
         mvc.perform(get("/api/admin/users").param("q", "au-find-job").header("Authorization", admin[0]))
                 .andExpect(jsonPath("$[0].job").value("NURSING"))
-                .andExpect(jsonPath("$[0].verified").value(false));
+                .andExpect(jsonPath("$[0].listed").value(true));   // nothing is mandatory, so families can see them
         mvc.perform(get("/api/admin/users").param("q", "au-find-admin").header("Authorization", admin[0]))
                 .andExpect(jsonPath("$[0].admin").value(true));
         // a typed % or _ is searched for as itself, not as "anything"

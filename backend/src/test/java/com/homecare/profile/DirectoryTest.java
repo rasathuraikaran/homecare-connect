@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,12 +21,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class DirectoryTest {
 
     @Autowired MockMvc mvc;
-    @Autowired JdbcTemplate jdbc;
-
-    /** Only verified caregivers are listed; document approval has its own tests, so these shortcut it. */
-    private void verify(String email) {
-        jdbc.update("update caregiver_profiles set verified = true where user_id = (select id from users where email = ?)", email);
-    }
 
     private String register(String email, String role) throws Exception {
         String res = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
@@ -41,7 +34,6 @@ class DirectoryTest {
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fullName\":\"%s\",\"jobType\":\"%s\",\"experienceYears\":%d}".formatted(name, job, years)))
                 .andExpect(status().isOk());
-        verify(email);
     }
 
     @Test
@@ -51,7 +43,6 @@ class DirectoryTest {
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", ninaAuth).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fullName\":\"Rita Rates\",\"jobType\":\"NURSING\",\"rates\":{\"HOURLY\":1800,\"DAILY\":9000}}"))
                 .andExpect(status().isOk());
-        verify("dir-n3@test.com");
         caregiver("dir-n2@test.com", "Omar Nurse", "NURSING", 9);
         caregiver("dir-p1@test.com", "Pia Physio", "PHYSIOTHERAPIST", 4);
         String seeker = register("dir-seeker@test.com", "CARE_SEEKER");

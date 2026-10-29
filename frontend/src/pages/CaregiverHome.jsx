@@ -44,7 +44,7 @@ export default function CaregiverHome({ firstName }) {
 
 function Loaded({ profile }) {
   const [available, setAvailable] = useState(profile.available)
-  const [verified, setVerified] = useState(profile.verified)
+  const [listed, setListed] = useState(profile.listed)
   const [toggleError, setToggleError] = useState('')
   const [toggling, setToggling] = useState(false)
   const [reviews, setReviews] = useState(null)
@@ -79,8 +79,8 @@ function Loaded({ profile }) {
           <div>
             <h2>{available ? 'You are available for work' : 'You are not available right now'}</h2>
             <p className="muted small">
-              {!verified
-                ? 'Families cannot see you until your documents are approved. See Verification below.'
+              {!listed
+                ? 'Families cannot see you until your required documents are approved. See the card below.'
                 : available ? 'Families can find you when they search.' : 'You are hidden from search until you switch this back on.'}
             </p>
             {toggleError && <p className="error-text small" role="alert">{toggleError}</p>}
@@ -89,7 +89,7 @@ function Loaded({ profile }) {
                   className="switch" disabled={toggling} onClick={toggle}><span /></button>
         </section>
 
-        <VerificationCard onStatus={setVerified} />
+        <VerificationCard onStatus={setListed} />
 
         <section className="block">
           <div className="block-head">

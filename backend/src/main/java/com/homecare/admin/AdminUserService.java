@@ -63,7 +63,7 @@ public class AdminUserService {
             User u = (User) row[0];
             CaregiverProfile p = (CaregiverProfile) row[1];
             return new AdminUserRow(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), u.isAdmin(), u.getCreatedAt(),
-                    p == null ? null : p.getJobType(), p == null ? null : p.isVerified());
+                    p == null ? null : p.getJobType(), p == null ? null : p.isListed());
         }).toList();
     }
 

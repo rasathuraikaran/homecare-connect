@@ -38,14 +38,17 @@ public class AdminVerificationService {
     private final UserRepository users;
     private final VerificationService verification;
     private final DocumentStorage storage;
+    private final DocumentRules rules;
 
     public AdminVerificationService(CaregiverDocumentRepository documents, CaregiverProfileRepository profiles,
-                                    UserRepository users, VerificationService verification, DocumentStorage storage) {
+                                    UserRepository users, VerificationService verification, DocumentStorage storage,
+                                    DocumentRules rules) {
         this.documents = documents;
         this.profiles = profiles;
         this.users = users;
         this.verification = verification;
         this.storage = storage;
+        this.rules = rules;
     }
 
     @Transactional(readOnly = true)
@@ -116,6 +119,7 @@ public class AdminVerificationService {
             uploaded.computeIfAbsent(d.getUserId(), k -> new EnumMap<>(DocumentType.class)).put(d.getDocType(), d);
         }
 
+        Map<JobType, List<DocumentType>> mandatory = new HashMap<>();   // asked once per job, not once per caregiver
         List<AdminCaregiver> result = new ArrayList<>();
         for (Long id : ids) {
             User person = people.get(id);
@@ -123,10 +127,14 @@ public class AdminVerificationService {
             CaregiverProfile profile = profileById.get(id);
             JobType job = profile == null ? null : profile.getJobType();
             Map<DocumentType, CaregiverDocument> mine = uploaded.getOrDefault(id, Map.of());
+            List<DocumentType> required = job == null ? List.of() : mandatory.computeIfAbsent(job, rules::required);
             List<AdminDocument> rows = new ArrayList<>();
-            for (DocumentType type : DocumentType.requiredFor(job)) rows.add(row(type, true, mine.get(type)));
-            for (DocumentType type : DocumentType.optionalFor(job)) rows.add(row(type, false, mine.get(type)));
-            result.add(new AdminCaregiver(id, person.getFullName(), person.getEmail(), job, VerificationStatus.of(job, mine), rows));
+            for (DocumentType type : required) rows.add(row(type, true, mine.get(type)));
+            for (DocumentType type : DocumentType.applicableTo(job)) {
+                if (!required.contains(type)) rows.add(row(type, false, mine.get(type)));
+            }
+            result.add(new AdminCaregiver(id, person.getFullName(), person.getEmail(), job,
+                    VerificationStatus.of(job, mine, required), rows));
         }
         return result;
     }

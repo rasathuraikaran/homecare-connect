@@ -25,7 +25,7 @@ public final class ProfileDtos {
 
     public record ProfileResponse(String fullName, Integer age, Integer experienceYears,
                                   String qualification, JobType jobType,
-                                  Map<RateType, BigDecimal> rates, boolean available, String photoUrl, boolean verified) {}
+                                  Map<RateType, BigDecimal> rates, boolean available, String photoUrl, boolean listed) {}
 
     public record AvailabilityRequest(@NotNull(message = "Say whether you are available") Boolean available) {}
 
@@ -33,5 +33,5 @@ public final class ProfileDtos {
     public record CaregiverCard(Long id, String fullName, Integer age, Integer experienceYears,
                                 String qualification, JobType jobType,
                                   Map<RateType, BigDecimal> rates, String photoUrl,
-                                Double rating, long reviewCount) {}
+                                Double rating, long reviewCount, java.util.List<String> badges) {}
 }

@@ -21,7 +21,9 @@ export default function CaregiverCard({ caregiver: c, onOpenReviews, onRequest }
         <RatingSummary average={c.rating} count={c.reviewCount} />
       </button>
       <span className="pt-chip"><Stethoscope />{jobLabel(c.jobType)}</span>
-      <span className="verified-chip"><Check />Documents verified</span>
+      {c.badges?.length > 0 && (
+        <div className="badges">{c.badges.map((b) => <span key={b} className="verified-chip"><Check />{b}</span>)}</div>
+      )}
       <p className={facts.length ? 'facts' : 'facts ghost'}>{facts.length ? facts.join(' · ') : 'Experience not shared yet'}</p>
       {tags.length > 0 && <div className="tags">{tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}
       {priced.length > 0 ? (
