@@ -5,7 +5,7 @@ import com.homecare.notification.Notification;
 import com.homecare.notification.NotificationRepository;
 import com.homecare.notification.NotificationService;
 import com.homecare.notification.NotificationStatus;
-import com.homecare.profile.JobType;
+import com.homecare.profile.CaregiverProfile;
 import com.homecare.user.User;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -66,7 +66,7 @@ public class AdminBookingService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "The alert is already " + last.name().toLowerCase());
             }
         }
-        notificationService.queueNewBookingAlert(BookingAlerts.of((Booking) row[0], (User) row[1], (User) row[2], (JobType) row[3]));
+        notificationService.queueNewBookingAlert(BookingAlerts.of((Booking) row[0], (User) row[1], (User) row[2], ((CaregiverProfile) row[3]).getJobType()));
         return one(id);
     }
 
@@ -85,11 +85,12 @@ public class AdminBookingService {
             Booking b = (Booking) r[0];
             User seeker = (User) r[1];
             User caregiver = (User) r[2];
+            CaregiverProfile profile = (CaregiverProfile) r[3];
             Notification n = latest.get(b.getId());
             Alert alert = n == null ? null : new Alert(n.getChannel(), n.getStatus(), n.getAttempts(), n.getLastError(), n.getSentAt());
             return new AdminBooking(b.getId(), b.getStatus(), b.getCreatedAt(),
-                    new Person(seeker.getId(), seeker.getFullName(), seeker.getEmail()), b.getSeekerPhone(),
-                    new Person(caregiver.getId(), caregiver.getFullName(), caregiver.getEmail()), (JobType) r[3],
+                    new Person(seeker.getId(), seeker.getFullName(), seeker.getEmail()), b.getSeekerPhone(), b.getAddress(),
+                    new Person(caregiver.getId(), caregiver.getFullName(), caregiver.getEmail()), profile.getAddress(), profile.getJobType(),
                     b.getRateType(), b.getQuotedAmount(), b.getNote(), alert);
         }).toList();
     }

@@ -12,6 +12,7 @@ export default function BookingDialog({ caregiver, defaultPhone, onClose, onBook
   const ref = useRef(null)
   const [rateType, setRateType] = useState('')
   const [phone, setPhone] = useState(defaultPhone ?? '')
+  const [address, setAddress] = useState('')
   const [note, setNote] = useState('')
   const [issues, setIssues] = useState([])
   const [busy, setBusy] = useState(false)
@@ -29,12 +30,16 @@ export default function BookingDialog({ caregiver, defaultPhone, onClose, onBook
       setIssues(['Enter a valid phone number so our team can reach you'])
       return
     }
+    if (!address.trim()) {
+      setIssues(['Enter the address where the care is needed'])
+      return
+    }
     setIssues([])
     setBusy(true)
     try {
       const b = await api('/bookings', {
         method: 'POST',
-        body: { caregiverId: caregiver.id, rateType: rateType || null, phone: phone.trim(), note },
+        body: { caregiverId: caregiver.id, rateType: rateType || null, phone: phone.trim(), address: address.trim(), note },
       })
       setBooking(b)
       onBooked()
@@ -88,6 +93,13 @@ export default function BookingDialog({ caregiver, defaultPhone, onClose, onBook
 
             <Field label="Your phone number *" type="tel" autoComplete="tel" placeholder="e.g. +94 77 123 4567"
                    hint="Our team will call or message you on this number." value={phone} onChange={(e) => setPhone(e.target.value)} />
+
+            <div className="field">
+              <label htmlFor="bk-address">Address where care is needed *</label>
+              <textarea id="bk-address" rows={2} maxLength={300} autoComplete="street-address" placeholder="House number, street, town"
+                        value={address} onChange={(e) => setAddress(e.target.value)} />
+              <span className="hint">Our team uses this to arrange the visit. Only they see it.</span>
+            </div>
 
             <div className="field">
               <label htmlFor="bk-note">Anything we should know? (optional)</label>

@@ -20,7 +20,7 @@ public final class VerificationDtos {
     public record AdminDocument(Long id, DocumentType type, String label, boolean required, DocumentStatus status,
                                 int revision, String rejectReason, Instant uploadedAt) {}
 
-    public record AdminCaregiver(Long userId, String name, String email, JobType job, VerificationStatus status,
+    public record AdminCaregiver(Long userId, String name, String email, String address, JobType job, VerificationStatus status,
                                  List<AdminDocument> documents) {}
 
     public record Summary(int needsReview) {}

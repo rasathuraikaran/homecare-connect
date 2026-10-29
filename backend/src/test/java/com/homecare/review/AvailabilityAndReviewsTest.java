@@ -30,7 +30,7 @@ class AvailabilityAndReviewsTest {
     private String[] caregiver(String email, String name, String job) throws Exception {
         String[] cg = register(email, name, "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg[0]).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fullName\":\"%s\",\"jobType\":\"%s\"}".formatted(name, job))).andExpect(status().isOk());
+                .content("{\"fullName\":\"%s\",\"jobType\":\"%s\",\"address\":\"12 Temple Road, Jaffna\"}".formatted(name, job))).andExpect(status().isOk());
         return cg;
     }
 
@@ -53,7 +53,7 @@ class AvailabilityAndReviewsTest {
 
         // saving the profile again must not flip availability back on
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg[0]).contentType(JSON)
-                .content("{\"fullName\":\"Avery Physio\",\"jobType\":\"PHYSIOTHERAPIST\",\"age\":30}")).andExpect(status().isOk())
+                .content("{\"fullName\":\"Avery Physio\",\"jobType\":\"PHYSIOTHERAPIST\",\"address\":\"12 Temple Road, Jaffna\",\"age\":30}")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(false));
 
         mvc.perform(put("/api/caregivers/me/availability").header("Authorization", cg[0]).contentType(JSON).content("{\"available\":true}"));

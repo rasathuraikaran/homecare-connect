@@ -41,7 +41,7 @@ public class ProfileService {
         CaregiverProfile profile = profiles.findById(user.getId()).orElseGet(() -> new CaregiverProfile(user.getId()));
         String qualification = req.qualification() == null || req.qualification().isBlank() ? null : req.qualification().trim();
         JobType before = profile.getJobType();
-        profile.update(req.age(), req.experienceYears(), qualification, req.jobType(), req.rates());
+        profile.update(req.age(), req.experienceYears(), qualification, req.jobType(), req.rates(), req.address().trim());
         CaregiverProfile saved = profiles.save(profile);
         if (before != req.jobType()) events.publishEvent(new ProfileJobChanged(user.getId()));   // what they must prove depends on the job
         return toResponse(user, saved);
@@ -80,7 +80,7 @@ public class ProfileService {
     }
 
     private ProfileResponse toResponse(User user, CaregiverProfile p) {
-        if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null, false);
-        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed());
+        if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null, false, null);
+        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed(), p.getAddress());
     }
 }

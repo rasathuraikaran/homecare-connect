@@ -19,7 +19,7 @@ final class BookingAlerts {
 
     static NewBookingAlert of(Booking booking, User seeker, User caregiver, JobType job) {
         String note = booking.getNote() == null || booking.getNote().isBlank() ? "None" : booking.getNote();
-        return new NewBookingAlert(booking.getId(), seeker.getFullName(), booking.getSeekerPhone(), seeker.getEmail(),
+        return new NewBookingAlert(booking.getId(), seeker.getFullName(), booking.getSeekerPhone(), seeker.getEmail(), booking.getAddress(),
                 caregiver.getFullName(), jobLabel(job), charge(booking.getRateType(), booking.getQuotedAmount()), note);
     }
 

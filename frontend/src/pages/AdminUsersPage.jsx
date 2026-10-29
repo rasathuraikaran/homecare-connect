@@ -94,6 +94,7 @@ export default function AdminUsersPage() {
                 <div className="doc-main">
                   <strong>{u.name} {u.admin && <span className="admin-tag">Admin</span>}</strong>
                   <span className="muted small">{u.email} · joined {joined(u.createdAt)}</span>
+                  {u.address && <span className="muted small">Address: {u.address}</span>}
                 </div>
                 <div className="doc-side">
                   <span className="status-chip off">{ROLE_LABEL[u.role]}</span>

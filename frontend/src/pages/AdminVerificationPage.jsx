@@ -111,6 +111,7 @@ export default function AdminVerificationPage() {
               <span className="muted small">{c.job ? jobLabel(c.job) : 'No job chosen yet'} · {c.email}</span>
               <StatusChip label={OVERALL_LABEL[c.status]} tone={OVERALL_TONE[c.status]} />
             </header>
+            {c.address && <p className="muted small">Address: {c.address}</p>}
 
             <ul className="doc-list">
               {c.documents.map((d) => {

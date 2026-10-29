@@ -51,7 +51,7 @@ class AdminUserFlowTest {
     private String[] fullCaregiver(String email, String name) throws Exception {
         String[] cg = register(email, name, "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg[0]).contentType(JSON)
-                .content("{\"fullName\":\"%s\",\"jobType\":\"CARETAKER\",\"rates\":{\"HOURLY\":1200}}".formatted(name))).andExpect(status().isOk());
+                .content("{\"fullName\":\"%s\",\"jobType\":\"CARETAKER\",\"address\":\"12 Temple Road, Jaffna\",\"rates\":{\"HOURLY\":1200}}".formatted(name))).andExpect(status().isOk());
         mvc.perform(multipart("/api/caregivers/me/photo").file(new MockMultipartFile("file", "p.png", "image/png", PNG))
                 .header("Authorization", cg[0])).andExpect(status().isOk());
         mvc.perform(multipart("/api/caregivers/me/documents/NIC").file(new MockMultipartFile("file", "nic.png", "image/png", PNG))
@@ -61,7 +61,7 @@ class AdminUserFlowTest {
 
     private void request(String seekerAuth, String caregiverId) throws Exception {
         mvc.perform(post("/api/bookings").header("Authorization", seekerAuth).contentType(JSON)
-                .content("{\"caregiverId\":%s,\"phone\":\"+94 77 123 4567\"}".formatted(caregiverId))).andExpect(status().isCreated());
+                .content("{\"caregiverId\":%s,\"address\":\"5 Lake Road, Colombo\",\"phone\":\"+94 77 123 4567\"}".formatted(caregiverId))).andExpect(status().isCreated());
     }
 
     private void review(String seekerAuth, String caregiverId) throws Exception {
@@ -105,7 +105,7 @@ class AdminUserFlowTest {
         register("au-find-zed@test.com", "Zed Zimmerman", "CAREGIVER");
         register("au-find-yan@test.com", "Yan Yates", "CARE_SEEKER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", register("au-find-job@test.com", "Jo Job", "CAREGIVER")[0]).contentType(JSON)
-                .content("{\"fullName\":\"Jo Job\",\"jobType\":\"NURSING\"}")).andExpect(status().isOk());
+                .content("{\"fullName\":\"Jo Job\",\"jobType\":\"NURSING\",\"address\":\"12 Temple Road, Jaffna\"}")).andExpect(status().isOk());
 
         // by name, in any letter case
         mvc.perform(get("/api/admin/users").param("q", "ZIMMERMAN").header("Authorization", admin[0]))
@@ -123,10 +123,11 @@ class AdminUserFlowTest {
         String caregivers = mvc.perform(get("/api/admin/users").param("role", "CAREGIVER").param("q", "au-find").header("Authorization", admin[0]))
                 .andReturn().getResponse().getContentAsString();
         assertEquals(List.of("CAREGIVER", "CAREGIVER"), JsonPath.read(caregivers, "$[*].role"));
-        // a caregiver's job and whether families can see them come along, and admins are marked
+        // a caregiver's job, address and whether families can see them come along, and admins are marked
         mvc.perform(get("/api/admin/users").param("q", "au-find-job").header("Authorization", admin[0]))
                 .andExpect(jsonPath("$[0].job").value("NURSING"))
-                .andExpect(jsonPath("$[0].listed").value(true));   // nothing is mandatory, so families can see them
+                .andExpect(jsonPath("$[0].listed").value(true))   // nothing is mandatory, so families can see them
+                .andExpect(jsonPath("$[0].address").value("12 Temple Road, Jaffna"));
         mvc.perform(get("/api/admin/users").param("q", "au-find-admin").header("Authorization", admin[0]))
                 .andExpect(jsonPath("$[0].admin").value(true));
         // a typed % or _ is searched for as itself, not as "anything"

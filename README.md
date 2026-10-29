@@ -40,13 +40,13 @@ cd frontend && npm install && npm run dev     # UI on :5173 (proxies /api to :80
 ## What it does
 
 - Two kinds of account: **care seeker** (light blue pages) and **caregiver** (green pages), with email and password or Google sign-in.
-- **Caregivers** build a profile (job, photo, experience, qualifications, charges per hour / session / day / full day and night), add documents such as their NIC (see below), see how complete the profile is, switch availability on or off, and read their reviews.
+- **Caregivers** build a profile (job, photo, address, experience, qualifications, charges per hour / session / day / full day and night), add documents such as their NIC (see below), see how complete the profile is, switch availability on or off, and read their reviews.
 - **Care seekers** pick Caretaker, Nurse or Physiotherapist, browse caregiver cards with prices and ratings, leave a review, and **request** a caregiver.
 - **Admin** gets an email for every request (or a WhatsApp message, if you prefer) and follows it up on the Admin page (see below). The Admin page also has a **Verification** tab for checking caregivers' documents and an **Accounts** tab for finding and deleting caregiver and care seeker accounts.
 
 ## Booking requests and alerts for the admin
 
-1. A care seeker presses **Request** on a caregiver, adds a phone number (and optionally a charge and a note), and confirms. Nothing is charged.
+1. A care seeker presses **Request** on a caregiver, adds a phone number and the address where the care is needed (and optionally a charge and a note), and confirms. Nothing is charged.
 2. The request is saved with status *Requested*, and an alert is queued for the admin.
 3. Within a few seconds the admin gets one email with everything needed to follow up: the request number, the seeker's name, phone and email, the caregiver and their job, the charge and the note. For example, with the subject `New booking request #12: Sam Seeker asked for Nina Fernando`:
 
@@ -56,6 +56,7 @@ cd frontend && npm install && npm run dev     # UI on :5173 (proxies /api to :80
    Care seeker: Sam Seeker
    Phone: +94 77 123 4567
    Email: sam@example.com
+   Care needed at: 5 Lake Road, Colombo
 
    Caregiver: Nina Fernando (Nursing)
    Charge: LKR 9,000 per day
@@ -109,7 +110,7 @@ Set `NOTIFY_CHANNEL=whatsapp` and the alerts go to WhatsApp instead of email (on
 
 1. Create a Meta developer account and a business, create an app, and add the **WhatsApp** product.
 2. **Try it with Meta's test number first.** The API Setup page gives you a test sender; add the admin's number as a recipient and send Meta's sample message to prove the phone receives it.
-3. Create a message **template** (category *Utility*, language English) named `new_booking_details`, with exactly this text and its eight variables, and wait for Meta to approve it. Keep the blank lines:
+3. Create a message **template** (category *Utility*, language English) named `new_booking_details`, with exactly this text and its nine variables, and wait for Meta to approve it. Keep the blank lines:
 
    ```text
    New booking request {{1}}
@@ -117,15 +118,16 @@ Set `NOTIFY_CHANNEL=whatsapp` and the alerts go to WhatsApp instead of email (on
    Care seeker: {{2}}
    Phone: {{3}}
    Email: {{4}}
+   Care needed at: {{5}}
 
-   Caregiver: {{5}} ({{6}})
-   Charge: {{7}}
-   Note: {{8}}
+   Caregiver: {{6}} ({{7}})
+   Charge: {{8}}
+   Note: {{9}}
 
    Please call the care seeker, then update the request on the HomeCare Connect admin page.
    ```
 
-   Meta asks for an example value for each variable. Use: `#12`, `Sam Seeker`, `+94 77 123 4567`, `sam@example.com`, `Nina Fernando`, `Nursing`, `LKR 9,000 per day`, `Mornings only`. (A template made earlier with only two variables will not work with this version, so create this new one.)
+   Meta asks for an example value for each variable. Use: `#12`, `Sam Seeker`, `+94 77 123 4567`, `sam@example.com`, `5 Lake Road, Colombo`, `Nina Fernando`, `Nursing`, `LKR 9,000 per day`, `Mornings only`. (A template made earlier with fewer variables will not work with this version, so create this new one.)
 
    (Messages to a number that has not written to you in the last 24 hours must use an approved template.)
 4. For real use, add a dedicated sender number, and create a **permanent token** (a system user in Business settings). The temporary token expires after a short time.
@@ -144,9 +146,11 @@ Documents are **optional by default**. A caregiver can add them when they set up
 2. An approved document earns a mark on the caregiver's card that families see, such as "NIC verified".
 3. **Making a document mandatory.** At the top of the Verification tab, **Document rules** has a switch for every document of every job. Switch one on and the caregivers of that job who do not have it approved are hidden from families and cannot be requested, until it is approved. Before the change takes effect the page says how many caregivers it will hide or show and asks you to confirm. Switch it off again and they come back.
 
-An optional document, even a rejected one, never hides a caregiver. The list of documents each job can take is in one place, `DocumentType` in `backend/src/main/java/com/homecare/verification`.
+An optional document, even a rejected one, never hides a caregiver. A caregiver also needs to give their **address** (required in the profile form); only the admin sees it. The list of documents each job can take is in one place, `DocumentType` in `backend/src/main/java/com/homecare/verification`.
 
 **Privacy.** An NIC is sensitive. Documents are saved on the server's disk in `uploads/documents` (git-ignored; `UPLOADS_DIR` moves it), are never served from a public address (profile photos are, documents are not), and only an admin can open one, through the Admin page. Replaced or removed files are deleted. Who may hold these files, for how long, and how they are backed up still needs your decision (and, for real users, a check against Sri Lanka's data protection rules) before you go live.
+
+**Existing accounts.** Caregivers who signed up before addresses were asked have none until they save their profile again. Older booking requests have no address either.
 
 ## Deleting an account (admin)
 

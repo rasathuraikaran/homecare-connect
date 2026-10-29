@@ -21,11 +21,12 @@ public final class ProfileDtos {
             @Min(value = 0, message = "Experience must be between 0 and 60 years") @Max(value = 60, message = "Experience must be between 0 and 60 years") Integer experienceYears,
             @Size(max = 255, message = "Qualifications must be 255 characters or fewer") String qualification,
             JobType jobType,
+            @NotBlank(message = "Address is required") @Size(max = 300, message = "Address must be 300 characters or fewer") String address,
             Map<RateType, @NotNull(message = "must have an amount") @DecimalMin(value = "0.01", message = "must be greater than zero") @DecimalMax(value = "9999999.99", message = "is too large") @Digits(integer = 7, fraction = 2, message = "can have at most 2 decimal places") BigDecimal> rates) {}
 
     public record ProfileResponse(String fullName, Integer age, Integer experienceYears,
                                   String qualification, JobType jobType,
-                                  Map<RateType, BigDecimal> rates, boolean available, String photoUrl, boolean listed) {}
+                                  Map<RateType, BigDecimal> rates, boolean available, String photoUrl, boolean listed, String address) {}
 
     public record AvailabilityRequest(@NotNull(message = "Say whether you are available") Boolean available) {}
 

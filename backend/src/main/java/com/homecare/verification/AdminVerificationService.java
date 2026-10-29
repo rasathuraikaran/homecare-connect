@@ -133,7 +133,7 @@ public class AdminVerificationService {
             for (DocumentType type : DocumentType.applicableTo(job)) {
                 if (!required.contains(type)) rows.add(row(type, false, mine.get(type)));
             }
-            result.add(new AdminCaregiver(id, person.getFullName(), person.getEmail(), job,
+            result.add(new AdminCaregiver(id, person.getFullName(), person.getEmail(), profile == null ? null : profile.getAddress(), job,
                     VerificationStatus.of(job, mine, required), rows));
         }
         return result;

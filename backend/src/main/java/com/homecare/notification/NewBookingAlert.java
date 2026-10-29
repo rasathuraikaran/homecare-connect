@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  * Everything the admin needs to follow up a new booking request. The values go into the template's
  * variables in the order below; {@link #TEMPLATE_BODY} is the exact text to create in Meta's template manager.
  */
-public record NewBookingAlert(long bookingId, String seekerName, String seekerPhone, String seekerEmail,
+public record NewBookingAlert(long bookingId, String seekerName, String seekerPhone, String seekerEmail, String careAddress,
                               String caregiverName, String job, String charge, String note) {
 
     /** Keep README.md in sync: this is the text to submit to Meta for WhatsApp, and the email and the test-mode log show it filled in. */
@@ -18,31 +18,33 @@ public record NewBookingAlert(long bookingId, String seekerName, String seekerPh
             Care seeker: {{2}}
             Phone: {{3}}
             Email: {{4}}
+            Care needed at: {{5}}
 
-            Caregiver: {{5}} ({{6}})
-            Charge: {{7}}
-            Note: {{8}}
+            Caregiver: {{6}} ({{7}})
+            Charge: {{8}}
+            Note: {{9}}
 
             Please call the care seeker, then update the request on the HomeCare Connect admin page.""";
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(\\d+)}}");
 
-    /** Values for {{1}} to {{8}}, cleaned and kept short so WhatsApp accepts them. */
+    /** Values for {{1}} to {{9}}, cleaned and kept short so WhatsApp accepts them. */
     public List<String> params() {
-        return values(100, 200);
+        return values(100, 150, 200);
     }
 
-    /** The same values for an email, which has room for a full email address and the longest note allowed. */
+    /** The same values for an email, which has room for a full email address, address and the longest note allowed. */
     public List<String> emailParams() {
-        return values(254, 500);
+        return values(254, 300, 500);
     }
 
-    private List<String> values(int emailMax, int noteMax) {
+    private List<String> values(int emailMax, int addressMax, int noteMax) {
         return List.of(
                 "#" + bookingId,
                 NotificationService.cleanParam(seekerName),
                 NotificationService.cleanParam(seekerPhone),
                 NotificationService.cleanParam(seekerEmail, emailMax),   // a cut-off email would be misleading, so allow more room
+                NotificationService.cleanParam(careAddress, addressMax),
                 NotificationService.cleanParam(caregiverName),
                 NotificationService.cleanParam(job),
                 NotificationService.cleanParam(charge),
@@ -50,8 +52,8 @@ public record NewBookingAlert(long bookingId, String seekerName, String seekerPh
     }
 
     public static String emailSubject(List<String> params) {
-        if (params.size() < 5) return "New booking request";
-        return "New booking request " + params.get(0) + ": " + params.get(1) + " asked for " + params.get(4);
+        if (params.size() < 6) return "New booking request";
+        return "New booking request " + params.get(0) + ": " + params.get(1) + " asked for " + params.get(5);
     }
 
     /** The same text as the WhatsApp message, with a link to the admin page underneath. */

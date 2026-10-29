@@ -373,7 +373,7 @@ add_caregiver() { # email fullName job years age qualification ratesJson
   [ -n "$tok" ] || { warn "Could not create $1 (is the password different from DEMO_PASSWORD?)"; return 0; }
   code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT "$API/caregivers/me/profile" \
     -H 'Content-Type: application/json' -H "Authorization: Bearer $tok" \
-    -d "{\"fullName\":\"$2\",\"jobType\":\"$3\",\"experienceYears\":$4,\"age\":$5,\"qualification\":\"$6\",\"rates\":$7}")
+    -d "{\"fullName\":\"$2\",\"jobType\":\"$3\",\"address\":\"12 Temple Road, Jaffna\",\"experienceYears\":$4,\"age\":$5,\"qualification\":\"$6\",\"rates\":$7}")
   if [ "$code" = "200" ]; then ok "$2  ($1)"; else warn "Profile for $1 was not saved (HTTP $code)"; fi
 }
 

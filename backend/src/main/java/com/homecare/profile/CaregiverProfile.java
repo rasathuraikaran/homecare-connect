@@ -49,6 +49,9 @@ public class CaregiverProfile {
     @Column(nullable = false)
     private boolean listed;
 
+    /** Where the caregiver lives. Only the admin sees it. Empty for profiles saved before it was asked. */
+    private String address;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
@@ -59,7 +62,8 @@ public class CaregiverProfile {
     }
 
     public void update(Integer age, Integer experienceYears, String qualification, JobType jobType,
-                       Map<RateType, BigDecimal> newRates) {
+                       Map<RateType, BigDecimal> newRates, String address) {
+        this.address = address;
         this.age = age;
         this.experienceYears = experienceYears;
         this.qualification = qualification;
@@ -96,6 +100,7 @@ public class CaregiverProfile {
     public Map<RateType, BigDecimal> getRates() { return new TreeMap<>(rates); }
     public boolean isAvailable() { return available; }
     public boolean isListed() { return listed; }
+    public String getAddress() { return address; }
     public JobType getJobType() { return jobType; }
     public String getPhotoFile() { return photoFile; }
 }

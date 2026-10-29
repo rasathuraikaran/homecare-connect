@@ -148,14 +148,14 @@ class EmailTest {
 
     @Test
     void theEmailHasAClearSubjectEveryDetailAndALinkToTheAdminPage() {
-        NewBookingAlert alert = new NewBookingAlert(12, "Sam\nSeeker", "+94 77 123 4567", "sam@example.com",
+        NewBookingAlert alert = new NewBookingAlert(12, "Sam\nSeeker", "+94 77 123 4567", "sam@example.com", "5 Lake Road, Colombo",
                 "Nina Fernando", "Nursing", "LKR 9,000 per day", "Mornings only");
         List<String> params = alert.emailParams();
 
         assertEquals("New booking request #12: Sam Seeker asked for Nina Fernando", NewBookingAlert.emailSubject(params));
         String body = NewBookingAlert.emailBody(params, "https://care.example.com/admin ");
-        for (String detail : List.of("#12", "Sam Seeker", "+94 77 123 4567", "sam@example.com", "Nina Fernando", "Nursing",
-                "LKR 9,000 per day", "Mornings only")) {
+        for (String detail : List.of("#12", "Sam Seeker", "+94 77 123 4567", "sam@example.com", "5 Lake Road, Colombo", "Nina Fernando",
+                "Nursing", "LKR 9,000 per day", "Mornings only")) {
             assertTrue(body.contains(detail), "missing in the email: " + detail);
         }
         assertTrue(body.endsWith("\n\nAdmin page: https://care.example.com/admin"), body);
@@ -163,14 +163,17 @@ class EmailTest {
     }
 
     @Test
-    void anEmailKeepsTheWholeNoteAndAddressThatWhatsAppHasToShorten() {
+    void anEmailKeepsTheWholeNoteAddressAndEmailThatWhatsAppHasToShorten() {
         String longNote = "n".repeat(400);
         String longEmail = "e".repeat(150) + "@example.com";
-        NewBookingAlert alert = new NewBookingAlert(1, "Sam", "123", longEmail, "Nina", "Nursing", "-", longNote);
+        String longAddress = "a".repeat(250);
+        NewBookingAlert alert = new NewBookingAlert(1, "Sam", "123", longEmail, longAddress, "Nina", "Nursing", "-", longNote);
 
-        assertEquals(longNote, alert.emailParams().get(7));
+        assertEquals(longNote, alert.emailParams().get(8));
         assertEquals(longEmail, alert.emailParams().get(3));
-        assertEquals(200, alert.params().get(7).length());
+        assertEquals(longAddress, alert.emailParams().get(4));
+        assertEquals(200, alert.params().get(8).length());
         assertEquals(100, alert.params().get(3).length());
+        assertEquals(150, alert.params().get(4).length());
     }
 }

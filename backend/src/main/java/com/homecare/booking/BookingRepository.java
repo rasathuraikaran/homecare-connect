@@ -27,17 +27,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             + "where b.seekerId = :seekerId and c.id = b.caregiverId and p.userId = b.caregiverId order by b.createdAt desc")
     List<Object[]> forSeeker(@Param("seekerId") Long seekerId, Pageable pageable);
 
-    /** Rows of [Booking, seeker User, caregiver User, caregiver job type], newest first. */
-    @Query("select b, s, c, p.jobType from Booking b, User s, User c, CaregiverProfile p "
+    /** Rows of [Booking, seeker User, caregiver User, caregiver profile], newest first. */
+    @Query("select b, s, c, p from Booking b, User s, User c, CaregiverProfile p "
             + "where s.id = b.seekerId and c.id = b.caregiverId and p.userId = b.caregiverId order by b.createdAt desc")
     List<Object[]> forAdmin(Pageable pageable);
 
-    @Query("select b, s, c, p.jobType from Booking b, User s, User c, CaregiverProfile p "
+    @Query("select b, s, c, p from Booking b, User s, User c, CaregiverProfile p "
             + "where s.id = b.seekerId and c.id = b.caregiverId and p.userId = b.caregiverId and b.status = :status "
             + "order by b.createdAt desc")
     List<Object[]> forAdminByStatus(@Param("status") BookingStatus status, Pageable pageable);
 
-    @Query("select b, s, c, p.jobType from Booking b, User s, User c, CaregiverProfile p "
+    @Query("select b, s, c, p from Booking b, User s, User c, CaregiverProfile p "
             + "where b.id = :id and s.id = b.seekerId and c.id = b.caregiverId and p.userId = b.caregiverId")
     List<Object[]> forAdminById(@Param("id") Long id);
 }

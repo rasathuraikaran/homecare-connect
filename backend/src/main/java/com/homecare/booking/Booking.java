@@ -37,6 +37,9 @@ public class Booking {
 
     private String note;
 
+    /** Where the care is needed. Empty for requests made before the question was asked. */
+    private String address;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -45,10 +48,11 @@ public class Booking {
 
     protected Booking() {}
 
-    public Booking(Long seekerId, Long caregiverId, String seekerPhone, RateType rateType, BigDecimal quotedAmount, String note) {
+    public Booking(Long seekerId, Long caregiverId, String seekerPhone, String address, RateType rateType, BigDecimal quotedAmount, String note) {
         this.seekerId = seekerId;
         this.caregiverId = caregiverId;
         this.seekerPhone = seekerPhone;
+        this.address = address;
         this.rateType = rateType;
         this.quotedAmount = quotedAmount;
         this.note = note;
@@ -67,5 +71,6 @@ public class Booking {
     public RateType getRateType() { return rateType; }
     public BigDecimal getQuotedAmount() { return quotedAmount; }
     public String getNote() { return note; }
+    public String getAddress() { return address; }
     public Instant getCreatedAt() { return createdAt; }
 }

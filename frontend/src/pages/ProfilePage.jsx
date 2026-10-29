@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const fileRef = useRef(null)
   const firstTime = !user.profileCompleted
 
-  const [form, setForm] = useState({ fullName: user.fullName, age: '', experienceYears: '', qualification: '', jobType: '', rates: {} })
+  const [form, setForm] = useState({ fullName: user.fullName, age: '', experienceYears: '', qualification: '', jobType: '', address: '', rates: {} })
   const [photoUrl, setPhotoUrl] = useState(null)   // saved photo
   const [newPhoto, setNewPhoto] = useState(null)   // { file, preview }
   const [removePhoto, setRemovePhoto] = useState(false)
@@ -45,7 +45,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (firstTime) return
     api('/caregivers/me/profile').then((p) => {
-      setForm({ fullName: p.fullName, age: p.age ?? '', experienceYears: p.experienceYears ?? '', qualification: p.qualification ?? '', jobType: p.jobType ?? '',
+      setForm({ fullName: p.fullName, age: p.age ?? '', experienceYears: p.experienceYears ?? '', qualification: p.qualification ?? '', jobType: p.jobType ?? '', address: p.address ?? '',
         rates: Object.fromEntries(Object.entries(p.rates ?? {}).map(([k, v]) => [k, String(v)])) })
       setPhotoUrl(p.photoUrl)
     }).catch((e) => setServerIssues([e.message])).finally(() => setLoaded(true))
@@ -80,10 +80,12 @@ export default function ProfilePage() {
   const rateErrors = Object.fromEntries(
     Object.entries(form.rates).map(([k, v]) => [k, v === '' || Number(v) <= 0 ? 'Enter an amount' : '']))
   const nameError = !form.fullName.trim() ? 'Full name is required' : ''
+  const addressError = !form.address.trim() ? 'Address is required' : ''
 
   // Everything wrong with the form right now, in the order it appears
   const problems = [
     nameError,
+    addressError,
     ageError,
     expError,
     ...RATE_TYPES.filter((r) => rateErrors[r.value]).map((r) => `Enter an amount for "${r.label}" or untick it`),
@@ -148,7 +150,7 @@ export default function ProfilePage() {
     try {
       await api('/caregivers/me/profile', {
         method: 'PUT',
-        body: { fullName: form.fullName, age: num(form.age), experienceYears: num(form.experienceYears), qualification: form.qualification, jobType: form.jobType || null,
+        body: { fullName: form.fullName, address: form.address.trim(), age: num(form.age), experienceYears: num(form.experienceYears), qualification: form.qualification, jobType: form.jobType || null,
           rates: Object.fromEntries(Object.entries(form.rates).map(([k, v]) => [k, Number(v)])) },
       })
       if (newPhoto) {
@@ -205,7 +207,7 @@ export default function ProfilePage() {
         <div className="page-head">
           <h1>{firstTime ? 'Set up your caregiver profile' : 'Edit your profile'}</h1>
           <p className="subtitle">
-            {firstTime ? 'Only your name is required. Add the rest now or come back to it later.' : 'Keep your details up to date so families can find you.'}
+            {firstTime ? 'Your name and address are required. Add the rest now or come back to it later.' : 'Keep your details up to date so families can find you.'}
           </p>
         </div>
 
@@ -270,6 +272,9 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
+              <Field label="Address *" autoComplete="street-address" maxLength={300} placeholder="House number, street, town"
+                     hint="Only our team sees your address. Families do not." error={attempted ? addressError : ''}
+                     value={form.address} onChange={set('address')} />
               <span className="hint">Photo: drag onto the circle or click it. JPG, PNG or WebP, up to 2 MB.</span>
             </section>
 

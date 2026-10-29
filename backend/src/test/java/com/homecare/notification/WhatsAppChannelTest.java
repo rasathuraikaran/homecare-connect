@@ -81,21 +81,21 @@ class WhatsAppChannelTest {
     void whenWhatsAppIsChosenTheAlertGoesThereWithAllDetailsAndNotByEmail() throws Exception {
         String[] nina = register("wa-nina@test.com", "Nina Fernando", "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", nina[0]).contentType(JSON)
-                        .content("{\"fullName\":\"Nina Fernando\",\"jobType\":\"NURSING\",\"rates\":{\"DAILY\":9000}}"))
+                        .content("{\"fullName\":\"Nina Fernando\",\"jobType\":\"NURSING\",\"address\":\"12 Temple Road, Jaffna\",\"rates\":{\"DAILY\":9000}}"))
                 .andExpect(status().isOk());
         String[] seeker = register("wa-seeker@test.com", "Sam Seeker", "CARE_SEEKER");
         String[] admin = register("wa-admin@test.com", "Admin Person", "CARE_SEEKER");
         jdbc.update("update users set is_admin = true where email = ?", "wa-admin@test.com");
 
         String res = mvc.perform(post("/api/bookings").header("Authorization", seeker[0]).contentType(JSON)
-                        .content("{\"caregiverId\":%s,\"phone\":\"+94 77 123 4567\",\"rateType\":\"DAILY\",\"note\":\"Mornings only\"}".formatted(nina[1])))
+                        .content("{\"caregiverId\":%s,\"address\":\"5 Lake Road, Colombo\",\"phone\":\"+94 77 123 4567\",\"rateType\":\"DAILY\",\"note\":\"Mornings only\"}".formatted(nina[1])))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         String id = String.valueOf((Integer) JsonPath.read(res, "$.id"));
 
         assertEquals(1, dispatcher.dispatchDue());
 
         assertEquals(List.of(new FakeWhatsApp.Message("94771234567", "new_booking_details",
-                List.of("#" + id, "Sam Seeker", "+94 77 123 4567", "wa-seeker@test.com",
+                List.of("#" + id, "Sam Seeker", "+94 77 123 4567", "wa-seeker@test.com", "5 Lake Road, Colombo",
                         "Nina Fernando", "Nursing", "LKR 9,000 per day", "Mornings only"))), WHATSAPP.sent);
         assertTrue(MAIL.sent.isEmpty(), "nothing is emailed when WhatsApp is the channel");
         mvc.perform(get("/api/admin/bookings").header("Authorization", admin[0]))

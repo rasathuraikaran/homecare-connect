@@ -92,7 +92,7 @@ class WhatsAppTest {
 
     @Test
     void theAlertFillsEveryVariableOfTheTemplate() {
-        NewBookingAlert alert = new NewBookingAlert(12, "Sam Seeker", "+94 77 123 4567", "sam@example.com",
+        NewBookingAlert alert = new NewBookingAlert(12, "Sam Seeker", "+94 77 123 4567", "sam@example.com", "5 Lake Road, Colombo",
                 "Nina Fernando", "Nursing", "LKR 9,000 per day", "Mornings only,\nplease call after 6pm");
         List<String> params = alert.params();
 
@@ -101,7 +101,7 @@ class WhatsAppTest {
 
         String message = NewBookingAlert.preview(params);
         assertFalse(message.contains("{{"), "no variable may be left unfilled");
-        for (String detail : List.of("#12", "Sam Seeker", "+94 77 123 4567", "sam@example.com", "Nina Fernando",
+        for (String detail : List.of("#12", "Sam Seeker", "+94 77 123 4567", "sam@example.com", "5 Lake Road, Colombo", "Nina Fernando",
                 "Nursing", "LKR 9,000 per day", "Mornings only, please call after 6pm")) {
             assertTrue(message.contains(detail), "missing in the message: " + detail);
         }
@@ -110,10 +110,10 @@ class WhatsAppTest {
 
     @Test
     void aValueThatLooksLikeAVariableIsShownAsTyped() {
-        NewBookingAlert alert = new NewBookingAlert(1, "Sam {{3}}", "123", "a@b.c", "Nina", "Nursing", "-", "$1 \\ {{8}}");
+        NewBookingAlert alert = new NewBookingAlert(1, "Sam {{3}}", "123", "a@b.c", "1 Road", "Nina", "Nursing", "-", "$1 \\ {{9}}");
         String message = NewBookingAlert.preview(alert.params());
         assertTrue(message.contains("Care seeker: Sam {{3}}"));
-        assertTrue(message.contains("Note: $1 \\ {{8}}"));
+        assertTrue(message.contains("Note: $1 \\ {{9}}"));
     }
 
     @Test

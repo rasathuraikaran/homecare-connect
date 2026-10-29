@@ -82,7 +82,7 @@ class BookingFlowTest {
     private String[] caregiver(String email, String name) throws Exception {
         String[] cg = register(email, name, "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg[0]).contentType(JSON)
-                .content("{\"fullName\":\"%s\",\"jobType\":\"NURSING\",\"rates\":{\"HOURLY\":1800,\"DAILY\":9000}}".formatted(name)))
+                .content("{\"fullName\":\"%s\",\"jobType\":\"NURSING\",\"address\":\"12 Temple Road, Jaffna\",\"rates\":{\"HOURLY\":1800,\"DAILY\":9000}}".formatted(name)))
                 .andExpect(status().isOk());
         return cg;
     }
@@ -96,7 +96,7 @@ class BookingFlowTest {
     private String book(String seekerAuth, String caregiverId, String extra) {
         try {
             return mvc.perform(post("/api/bookings").header("Authorization", seekerAuth).contentType(JSON)
-                            .content("{\"caregiverId\":%s,\"phone\":\"+94 77 123 4567\"%s}".formatted(caregiverId, extra)))
+                            .content("{\"caregiverId\":%s,\"address\":\"5 Lake Road, Colombo\",\"phone\":\"+94 77 123 4567\"%s}".formatted(caregiverId, extra)))
                     .andExpect(status().isCreated())
                     .andReturn().getResponse().getContentAsString();
         } catch (Exception e) {
@@ -139,6 +139,7 @@ class BookingFlowTest {
                 Care seeker: Sam Seeker
                 Phone: +94 77 123 4567
                 Email: bk-seeker@test.com
+                Care needed at: 5 Lake Road, Colombo
 
                 Caregiver: Nina Fernando (Nursing)
                 Charge: LKR 9,000 per day
@@ -156,6 +157,8 @@ class BookingFlowTest {
         mvc.perform(get("/api/admin/bookings").header("Authorization", admin[0]))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id == " + id + ")].seekerPhone").value("+94 77 123 4567"))
+                .andExpect(jsonPath("$[?(@.id == " + id + ")].address").value("5 Lake Road, Colombo"))
+                .andExpect(jsonPath("$[?(@.id == " + id + ")].caregiverAddress").value("12 Temple Road, Jaffna"))
                 .andExpect(jsonPath("$[?(@.id == " + id + ")].seeker.email").value("bk-seeker@test.com"))
                 .andExpect(jsonPath("$[?(@.id == " + id + ")].caregiver.name").value("Nina Fernando"));
 
@@ -192,6 +195,7 @@ class BookingFlowTest {
         assertTrue(body.contains("Care seeker: Sam Seeker"), body);
         assertTrue(body.contains("Phone: +94 77 123 4567"), body);
         assertTrue(body.contains("Email: bk-full-seeker@test.com"), body);
+        assertTrue(body.contains("Care needed at: 5 Lake Road, Colombo"), body);
         assertTrue(body.contains("Caregiver: Nina Fernando (Nursing)"), body);
         assertTrue(body.contains("Charge: Not chosen yet"), body);
         assertTrue(body.contains("Note: None"), body);
@@ -240,36 +244,40 @@ class BookingFlowTest {
         String auth = seeker[0];
 
         // a bad phone number and a missing one are explained, together
-        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + a[1] + ",\"phone\":\"abc\"}"))
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + a[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"abc\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors[?(@ == 'Enter a valid phone number')]").isNotEmpty());
         mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + a[1] + "}"))
                 .andExpect(status().isBadRequest());
+        // the address where the care is needed is required, and the error says so
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + a[1] + ",\"phone\":\"0771234567\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@ == 'Enter the address where care is needed')]").isNotEmpty());
         // a charge type the caregiver does not offer
         mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON)
-                        .content("{\"caregiverId\":" + a[1] + ",\"phone\":\"0771234567\",\"rateType\":\"SESSION\"}"))
+                        .content("{\"caregiverId\":" + a[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\",\"rateType\":\"SESSION\"}"))
                 .andExpect(status().isBadRequest());
         // unknown caregiver, and a seeker's id is not a caregiver
-        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":999999,\"phone\":\"0771234567\"}"))
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":999999,\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\"}"))
                 .andExpect(status().isNotFound());
-        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + seeker[1] + ",\"phone\":\"0771234567\"}"))
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + seeker[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\"}"))
                 .andExpect(status().isNotFound());
 
         // a caregiver who switched availability off cannot be requested
         mvc.perform(put("/api/caregivers/me/availability").header("Authorization", d[0]).contentType(JSON).content("{\"available\":false}"));
-        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + d[1] + ",\"phone\":\"0771234567\"}"))
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + d[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\"}"))
                 .andExpect(status().isConflict());
 
         book(auth, a[1], "");
         // the same caregiver twice
-        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + a[1] + ",\"phone\":\"0771234567\"}"))
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + a[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\"}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("You already have an open request with this caregiver"));
         book(auth, b[1], "");
         book(auth, c[1], "");
         // three waiting is the limit, so one account cannot flood the admin
-        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + d[1] + ",\"phone\":\"0771234567\"}"))
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + d[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\"}"))
                 .andExpect(status().isConflict());
         mvc.perform(put("/api/caregivers/me/availability").header("Authorization", d[0]).contentType(JSON).content("{\"available\":true}"));
-        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + d[1] + ",\"phone\":\"0771234567\"}"))
+        mvc.perform(post("/api/bookings").header("Authorization", auth).contentType(JSON).content("{\"caregiverId\":" + d[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\"}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("3 requests waiting")));
     }
 
@@ -296,7 +304,7 @@ class BookingFlowTest {
     void onlyTheRightPeopleCanUseEachEndpoint() throws Exception {
         String[] cg = caregiver("bk-a-cg@test.com", "Cora Access");
         String[] seeker = register("bk-a-seeker@test.com", "Sam Seeker", "CARE_SEEKER");
-        String body = "{\"caregiverId\":" + cg[1] + ",\"phone\":\"0771234567\"}";
+        String body = "{\"caregiverId\":" + cg[1] + ",\"address\":\"5 Lake Road, Colombo\",\"phone\":\"0771234567\"}";
 
         mvc.perform(post("/api/bookings").contentType(JSON).content(body)).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/bookings").header("Authorization", cg[0]).contentType(JSON).content(body)).andExpect(status().isForbidden());

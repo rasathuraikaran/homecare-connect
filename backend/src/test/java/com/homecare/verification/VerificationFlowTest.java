@@ -53,7 +53,7 @@ class VerificationFlowTest {
 
     private void setJob(String auth, String name, String job) throws Exception {
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth).contentType(JSON)
-                .content("{\"fullName\":\"%s\",\"jobType\":\"%s\"}".formatted(name, job))).andExpect(status().isOk());
+                .content("{\"fullName\":\"%s\",\"jobType\":\"%s\",\"address\":\"12 Temple Road, Jaffna\"}".formatted(name, job))).andExpect(status().isOk());
     }
 
     private String[] caregiver(String email, String name, String job) throws Exception {
@@ -117,7 +117,7 @@ class VerificationFlowTest {
 
     private ResultActions request(String seekerAuth, String caregiverId) throws Exception {
         return mvc.perform(post("/api/bookings").header("Authorization", seekerAuth).contentType(JSON)
-                .content("{\"caregiverId\":%s,\"phone\":\"+94 77 123 4567\"}".formatted(caregiverId)));
+                .content("{\"caregiverId\":%s,\"address\":\"5 Lake Road, Colombo\",\"phone\":\"+94 77 123 4567\"}".formatted(caregiverId)));
     }
 
     // ------------------------------------------------------------------ optional until the admin says otherwise
@@ -442,7 +442,7 @@ class VerificationFlowTest {
     }
 
     @Test
-    void theAdminSeesWhoIsWaitingAndWhatIsMissing() throws Exception {
+    void theAdminSeesWhoIsWaitingTheirAddressAndWhatIsMissing() throws Exception {
         String[] wen = caregiver("vf-list-p@test.com", "Wen Waiting", "PHYSIOTHERAPIST");
         String[] admin = admin("vf-list-admin@test.com");
         upload(wen[0], "NIC", PNG).andExpect(status().isOk());   // only the optional one so far
@@ -453,6 +453,7 @@ class VerificationFlowTest {
         assertTrue(names.contains("Wen Waiting"));
         mvc.perform(get("/api/admin/verifications").param("needsReview", "true").header("Authorization", admin[0]))
                 .andExpect(jsonPath("$[?(@.name == 'Wen Waiting')].email").value("vf-list-p@test.com"))
+                .andExpect(jsonPath("$[?(@.name == 'Wen Waiting')].address").value("12 Temple Road, Jaffna"))
                 .andExpect(jsonPath("$[?(@.name == 'Wen Waiting')].status").value("NOT_REQUIRED"))
                 .andExpect(jsonPath("$[?(@.name == 'Wen Waiting')].documents[0].type").value("DEGREE_CERTIFICATE"));
         List<Object> degreeIds = JsonPath.read(waiting, "$[?(@.name == 'Wen Waiting')].documents[0].id");

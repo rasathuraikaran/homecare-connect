@@ -38,16 +38,21 @@ class ProfileFlowTest {
         mvc.perform(get("/api/auth/me").header("Authorization", auth))
                 .andExpect(jsonPath("$.profileCompleted").value(false));
 
-        // only the name is required
+        // the name and the address are required, everything else is optional
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"  Anu K  \"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"Anu K\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@ == 'Address is required')]").isNotEmpty());
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"  Anu K  \",\"address\":\"  12 Temple Road, Jaffna  \"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fullName").value("Anu K"))
+                .andExpect(jsonPath("$.address").value("12 Temple Road, Jaffna"))
                 .andExpect(jsonPath("$.age").doesNotExist());
 
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"Anu K\",\"age\":34,\"experienceYears\":6,\"qualification\":\"Diploma in Nursing\",\"jobType\":\"NURSING\"}"))
+                        .content("{\"fullName\":\"Anu K\",\"age\":34,\"experienceYears\":6,\"qualification\":\"Diploma in Nursing\",\"jobType\":\"NURSING\",\"address\":\"12 Temple Road, Jaffna\"}"))
                 .andExpect(jsonPath("$.jobType").value("NURSING"))
                 .andExpect(jsonPath("$.age").value(34))
                 .andExpect(jsonPath("$.qualification").value("Diploma in Nursing"));
@@ -71,14 +76,14 @@ class ProfileFlowTest {
         String url = "/api/caregivers/me/profile";
 
         mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"R\",\"rates\":{\"HOURLY\":1500,\"FULL_DAY_NIGHT\":12000.50}}"))
+                        .content("{\"fullName\":\"R\",\"address\":\"12 Temple Road, Jaffna\",\"rates\":{\"HOURLY\":1500,\"FULL_DAY_NIGHT\":12000.50}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rates.HOURLY").value(1500))
                 .andExpect(jsonPath("$.rates.FULL_DAY_NIGHT").value(12000.50));
 
         // saving again replaces the whole set
         mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"R\",\"rates\":{\"DAILY\":6000}}"))
+                        .content("{\"fullName\":\"R\",\"address\":\"12 Temple Road, Jaffna\",\"rates\":{\"DAILY\":6000}}"))
                 .andExpect(jsonPath("$.rates.DAILY").value(6000))
                 .andExpect(jsonPath("$.rates.HOURLY").doesNotExist());
         mvc.perform(get(url).header("Authorization", auth))
@@ -87,13 +92,13 @@ class ProfileFlowTest {
 
         // no rates at all clears them
         mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"R\"}"))
+                        .content("{\"fullName\":\"R\",\"address\":\"12 Temple Road, Jaffna\"}"))
                 .andExpect(jsonPath("$.rates.DAILY").doesNotExist());
 
         for (String bad : new String[]{"{\"HOURLY\":0}", "{\"HOURLY\":-5}", "{\"HOURLY\":12345678}",
                 "{\"HOURLY\":10.999}", "{\"WEEKLY\":100}", "{\"HOURLY\":null}"}) {
             mvc.perform(put(url).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"fullName\":\"R\",\"rates\":" + bad + "}"))
+                            .content("{\"fullName\":\"R\",\"address\":\"12 Temple Road, Jaffna\",\"rates\":" + bad + "}"))
                     .andExpect(status().isBadRequest());
         }
     }
@@ -103,7 +108,7 @@ class ProfileFlowTest {
         String auth = "Bearer " + token("cg-errs@test.com", "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"\",\"age\":12,\"experienceYears\":99,\"rates\":{\"HOURLY\":0}}"))
+                        .content("{\"fullName\":\"\",\"address\":\"12 Temple Road, Jaffna\",\"age\":12,\"experienceYears\":99,\"rates\":{\"HOURLY\":0}}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.length()").value(4))
                 .andExpect(jsonPath("$.errors[?(@ == 'Full name is required')]").isNotEmpty())
@@ -121,10 +126,10 @@ class ProfileFlowTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"\"}"))
                 .andExpect(status().isBadRequest());
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"A\",\"age\":12}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"A\",\"address\":\"12 Temple Road, Jaffna\",\"age\":12}"))
                 .andExpect(status().isBadRequest());
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", cg)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"A\",\"jobType\":\"PILOT\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"A\",\"address\":\"12 Temple Road, Jaffna\",\"jobType\":\"PILOT\"}"))
                 .andExpect(status().isBadRequest());
 
         // not an image, even if it claims to be

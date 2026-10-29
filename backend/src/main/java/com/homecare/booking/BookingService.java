@@ -62,7 +62,7 @@ public class BookingService {
         }
 
         String note = req.note() == null || req.note().isBlank() ? null : req.note().trim();
-        Booking booking = bookings.save(new Booking(seeker.getId(), profile.getUserId(), req.phone().trim(),
+        Booking booking = bookings.save(new Booking(seeker.getId(), profile.getUserId(), req.phone().trim(), req.address().trim(),
                 req.rateType(), quoted, note));
 
         User caregiver = users.findById(profile.getUserId()).orElseThrow();
@@ -91,6 +91,6 @@ public class BookingService {
 
     private static BookingResponse toResponse(Booking b, String caregiverName, com.homecare.profile.JobType job) {
         return new BookingResponse(b.getId(), b.getStatus(), b.getCaregiverId(), caregiverName, job,
-                b.getRateType(), b.getQuotedAmount(), b.getNote(), b.getCreatedAt());
+                b.getRateType(), b.getQuotedAmount(), b.getNote(), b.getAddress(), b.getCreatedAt());
     }
 }

@@ -32,7 +32,7 @@ class DirectoryTest {
     private void caregiver(String email, String name, String job, int years) throws Exception {
         String auth = register(email, "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fullName\":\"%s\",\"jobType\":\"%s\",\"experienceYears\":%d}".formatted(name, job, years)))
+                .content("{\"fullName\":\"%s\",\"jobType\":\"%s\",\"address\":\"12 Temple Road, Jaffna\",\"experienceYears\":%d}".formatted(name, job, years)))
                 .andExpect(status().isOk());
     }
 
@@ -41,7 +41,7 @@ class DirectoryTest {
         caregiver("dir-n1@test.com", "Nina Nurse", "NURSING", 3);
         String ninaAuth = register("dir-n3@test.com", "CAREGIVER");
         mvc.perform(put("/api/caregivers/me/profile").header("Authorization", ninaAuth).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fullName\":\"Rita Rates\",\"jobType\":\"NURSING\",\"rates\":{\"HOURLY\":1800,\"DAILY\":9000}}"))
+                .content("{\"fullName\":\"Rita Rates\",\"jobType\":\"NURSING\",\"address\":\"12 Temple Road, Jaffna\",\"rates\":{\"HOURLY\":1800,\"DAILY\":9000}}"))
                 .andExpect(status().isOk());
         caregiver("dir-n2@test.com", "Omar Nurse", "NURSING", 9);
         caregiver("dir-p1@test.com", "Pia Physio", "PHYSIOTHERAPIST", 4);

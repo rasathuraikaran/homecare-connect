@@ -104,12 +104,14 @@ export default function AdminPage() {
                   <strong>{b.seeker.name}</strong>
                   <a href={`tel:${b.seekerPhone.replace(/[^0-9+]/g, '')}`}>{b.seekerPhone}</a>
                   <span className="muted small">{b.seeker.email}</span>
+                  <span className="small"><span className="label">Care needed at</span> {b.address ?? 'Not given (older request)'}</span>
                 </div>
                 <div>
                   <span className="label">Chosen caregiver</span>
                   <strong>{b.caregiver.name}</strong>
                   <span className="muted small">{jobLabel(b.jobType)}</span>
                   <span className="muted small">{b.caregiver.email}</span>
+                  {b.caregiverAddress && <span className="muted small">Lives at {b.caregiverAddress}</span>}
                 </div>
                 <div>
                   <span className="label">Charge asked for</span>

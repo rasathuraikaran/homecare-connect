@@ -8,9 +8,9 @@ import java.time.Instant;
 public final class AdminUserDtos {
     private AdminUserDtos() {}
 
-    /** One account in the admin's list. job and listed are only set for caregivers; listed says whether families can see them. */
+    /** One account in the admin's list. job, listed and address are only set for caregivers; listed says whether families can see them. */
     public record AdminUserRow(Long id, String name, String email, Role role, boolean admin, Instant createdAt,
-                               JobType job, Boolean listed) {}
+                               JobType job, Boolean listed, String address) {}
 
     /** What deleting the account would remove, so the admin can see it before confirming. */
     public record DeletionPreview(Long id, String name, String email, Role role, boolean admin,
