@@ -10,6 +10,9 @@ import AdminPage from './pages/AdminPage'
 import AdminVerificationPage from './pages/AdminVerificationPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import ServicesPage from './pages/ServicesPage'
+import PayReturnPage from './pages/PayReturnPage'
+import PayCancelPage from './pages/PayCancelPage'
+import PaySimulatedPage from './pages/PaySimulatedPage'
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth()
@@ -59,6 +62,9 @@ export default function App() {
       <Route path="/admin" element={<RequireAuth><RequireAdmin><AdminPage /></RequireAdmin></RequireAuth>} />
       <Route path="/admin/verification" element={<RequireAuth><RequireAdmin><AdminVerificationPage /></RequireAdmin></RequireAuth>} />
       <Route path="/services" element={<RequireAuth><ServicesPage /></RequireAuth>} />
+      <Route path="/pay/return" element={<RequireAuth><PayReturnPage /></RequireAuth>} />
+      <Route path="/pay/cancel" element={<RequireAuth><PayCancelPage /></RequireAuth>} />
+      <Route path="/pay/simulated" element={<RequireAuth><PaySimulatedPage /></RequireAuth>} />
       <Route path="/admin/users" element={<RequireAuth><RequireAdmin><AdminUsersPage /></RequireAdmin></RequireAuth>} />
       <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
