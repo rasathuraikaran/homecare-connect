@@ -40,6 +40,13 @@ public class Booking {
     /** Where the care is needed. Empty for requests made before the question was asked. */
     private String address;
 
+    /** What the seeker is asked to pay once the visit is completed. Empty until the admin sets it. */
+    @Column(name = "fee_amount", precision = 10, scale = 2)
+    private BigDecimal feeAmount;
+
+    @Column(name = "fee_requested_at")
+    private Instant feeRequestedAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -58,6 +65,12 @@ public class Booking {
         this.note = note;
     }
 
+    public void setFee(BigDecimal fee) {
+        this.feeAmount = fee;
+        this.feeRequestedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
     public void changeStatus(BookingStatus next) {
         this.status = next;
         this.updatedAt = Instant.now();
@@ -72,5 +85,6 @@ public class Booking {
     public BigDecimal getQuotedAmount() { return quotedAmount; }
     public String getNote() { return note; }
     public String getAddress() { return address; }
+    public BigDecimal getFeeAmount() { return feeAmount; }
     public Instant getCreatedAt() { return createdAt; }
 }
