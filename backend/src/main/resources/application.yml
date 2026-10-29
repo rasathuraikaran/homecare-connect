@@ -45,6 +45,15 @@ app:
     admin-to: ${EMAIL_ADMIN_TO:}
     # The link at the bottom of the email: the site's address (PUBLIC_URL, else the frontend's CORS_ORIGIN) plus /admin
     admin-url: ${PUBLIC_URL:${CORS_ORIGIN:http://localhost:5173}}/admin
+  payhere:
+    # off: no fees. simulated: a pretend PayHere for trying the flow. sandbox / live: the real PayHere.
+    mode: ${PAYHERE_MODE:off}
+    merchant-id: ${PAYHERE_MERCHANT_ID:}
+    merchant-secret: ${PAYHERE_MERCHANT_SECRET:}
+    # The public address of this backend. PayHere calls back to it after a payment, so it cannot be localhost.
+    public-api-url: ${PUBLIC_API_URL:}
+    # Where families are sent back to after paying
+    site-url: ${PUBLIC_URL:${CORS_ORIGIN:http://localhost:5173}}
   notifications:
     # How the admin hears about a booking request: email or whatsapp
     channel: ${NOTIFY_CHANNEL:email}
