@@ -67,7 +67,7 @@ cd frontend && npm install && npm run dev     # UI on :5173 (proxies /api to :80
    Admin page: http://localhost:5173/admin
    ```
 
-4. The admin calls the seeker, arranges it with the caregiver, and marks the request *Confirmed*, *Completed* or *Cancelled*.
+4. The admin calls the seeker, arranges it with the caregiver, and marks the request *Confirmed*, *Completed* or *Cancelled*. When online payments are on (see **Booking fee and payments**), marking a visit *Completed* also asks for the fee the seeker pays.
 
 Because the alert carries the seeker's phone, email and note, send it only to a mailbox you control. (By WhatsApp it also passes through Meta's servers and stays in the admin's chat history.)
 
@@ -138,6 +138,62 @@ Meta charges per message and its prices and rules change, so check their current
 
 Not built yet: delivery receipts and replies from WhatsApp (webhooks), and alerts when a seeker cancels. Alerts are sent by a single backend process; running several backends needs a lock around the sender.
 
+## Booking fee and payments (PayHere)
+
+The platform earns a **booking fee**, paid by the care seeker through [PayHere](https://www.payhere.lk) after the visit. It is separate from the caregiver's own charge. PayHere pays the money out to the bank account in **your PayHere merchant profile**; the app never sees or stores a bank account or a card number.
+
+1. The request goes as before: Requested, then the admin confirms it and arranges the visit.
+2. After the visit the admin marks it **Completed** and types the fee for that request (5% of the quoted charge is suggested; it can be anything).
+3. The seeker gets an email, and a **Pay now** button appears under **Your requests**. It opens PayHere's own payment page.
+4. When PayHere confirms, the request shows **Paid** on both sides and the seeker gets a receipt. The admin is emailed too, with PayHere's payment id.
+
+On the Admin page a completed request shows the fee and *Unpaid* or *Paid*, with **Send payment email again**, **Change fee** and **Mark paid outside PayHere** (for a bank deposit or cash). A failed or cancelled payment can simply be tried again.
+
+**Modes.** Set `PAYHERE_MODE` (in `.env.local`):
+
+| Mode | What it does |
+| --- | --- |
+| `off` (default) | No fees. Marking a visit completed works exactly as before. |
+| `simulated` | A built-in pretend PayHere page, to try the whole flow on your own computer. Nothing is charged and nothing leaves your computer. **Never use it on a real server:** any care seeker could mark their own fee paid. |
+| `sandbox` | PayHere's test system, with test cards. Needs the settings below. |
+| `live` | Real money. Needs the settings below and an approved PayHere merchant account. |
+
+**Try it now (simulated).**
+
+```bash
+PAYHERE_MODE=simulated ./start-service.sh restart
+```
+
+Make a request, confirm it as admin, mark it completed with a fee, then sign in as the seeker and press **Pay now**. The simulator page lets you pay, fail or cancel. To keep it from emailing real people while you try, add `EMAIL_ENABLED=false`.
+
+**Setting up the real PayHere.**
+
+1. Create a merchant account at payhere.lk and give it the bank account the money should go to. PayHere's screens and approval steps change, so follow their current guide.
+2. In PayHere add the website's domain (the address families open). PayHere then gives you a **Merchant ID** and a **Merchant Secret** for that domain. Payments only work from the domain you registered.
+3. PayHere tells our server about each payment by calling it, so the backend needs a **public https address**: set `PUBLIC_API_URL` to it (for example `https://api.example.com`). PayHere will call `PUBLIC_API_URL/api/payments/payhere/notify`. A `localhost` address cannot be reached, so for the sandbox on your own computer use a tunnel service that gives you a public address.
+4. Put the values in `.env.local` (git-ignored) and restart:
+
+   ```text
+   PAYHERE_MODE=sandbox
+   PAYHERE_MERCHANT_ID=the-merchant-id
+   PAYHERE_MERCHANT_SECRET=the-merchant-secret
+   PUBLIC_API_URL=https://your-public-backend-address
+   PUBLIC_URL=https://the-address-families-open
+   ```
+
+   `PUBLIC_URL` is where PayHere sends families back to (it falls back to `CORS_ORIGIN`). The app refuses to start in `sandbox` or `live` mode if a value is missing, and the secret is never written to logs.
+5. **Sandbox first.** It is a separate copy of PayHere with its own account, Merchant ID and Secret (a sandbox account cannot be turned into a live one). PayHere's test cards that succeed: Visa `4916217501611292`, MasterCard `5307732125531191`, American Express `346781005510225`; any other card fails. When it works, switch to `live` with the live account's values.
+
+**How a payment is protected.** The amount always comes from our database, never from the browser. A payment only counts when PayHere's own signed message says so: the page the family returns to proves nothing. The signature, the merchant id, the order, the amount and the currency must all match, repeated messages are counted once, and a second payment for a fee that is already paid is kept and flagged instead of lost.
+
+**Not built yet.**
+- **Refunds** are done in the PayHere dashboard. The app flags a fee that was paid twice, charged back, or paid in a different amount than the fee now set, so the admin knows to look.
+- Payouts to caregivers (the platform only collects its own fee), receipts as PDF, USD, and asking PayHere for a payment's status if a message is ever missed.
+- Nothing stops a seeker who has not paid from making new requests; the admin sees *Unpaid* and can send the email again.
+- Payment emails always go by email, even when `NOTIFY_CHANNEL=whatsapp`.
+
+Two things to check in the PayHere sandbox the first time: the city sent to PayHere is the last part of the care address (after the last comma), and PayHere must accept payments from the domain you registered.
+
 ## Caregiver documents and verification
 
 Documents are **optional by default**. A caregiver can add them when they set up their profile (the **Documents** part of the form) or later on their dashboard (the **Verification** card): a caretaker can add an NIC and a Grama Niladhari (GS) letter, a nurse a nursing qualification certificate and an NIC, a physiotherapist a degree certificate and an NIC. JPG, PNG, WebP or PDF, up to 5 MB, checked by content and not by name.
@@ -181,4 +237,4 @@ While the Google consent screen is in "Testing", only the Gmail addresses listed
 
 ## Before putting this on a real server
 
-The defaults are for development only: the database password is `homecare`, and the script makes a random login secret for your computer. On a server set `JWT_SECRET`, `DB_PASSWORD` and `CORS_ORIGIN` yourself, use HTTPS, and do not use the demo accounts.
+The defaults are for development only: the database password is `homecare`, and the script makes a random login secret for your computer. On a server set `JWT_SECRET`, `DB_PASSWORD` and `CORS_ORIGIN` yourself, use HTTPS, and do not use the demo accounts. For payments set `PAYHERE_MODE=live` with the live `PAYHERE_MERCHANT_ID`, `PAYHERE_MERCHANT_SECRET`, `PUBLIC_API_URL` and `PUBLIC_URL`, and never leave `simulated` on.

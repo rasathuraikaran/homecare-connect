@@ -288,6 +288,13 @@ start_all() {
   else
     echo "  Admin alerts:  ${BOLD}$channel test mode${RESET} ${DIM}(messages are only written to .run/backend.log, nothing is sent)${RESET}"
   fi
+  local pay
+  pay="$(printf '%s' "${PAYHERE_MODE:-off}" | tr '[:upper:]' '[:lower:]')"
+  case "$pay" in
+    simulated) echo "  Payments:      ${BOLD}simulated${RESET} ${DIM}(a pretend PayHere page, nothing is charged; not for a real server)${RESET}" ;;
+    sandbox|live) echo "  Payments:      ${BOLD}PayHere $pay${RESET}" ;;
+    *) echo "  Payments:      ${BOLD}off${RESET} ${DIM}(no booking fee; set PAYHERE_MODE to turn on)${RESET}" ;;
+  esac
   if [ -z "$(google_client_id)" ]; then
     warn "Google sign-in is off (no GOOGLE_CLIENT_ID). Email sign-up and login work normally."
   fi
