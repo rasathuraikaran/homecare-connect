@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import CaregiverCard from '../components/CaregiverCard'
 import BookingDialog from '../components/BookingDialog'
 import MyRequests from '../components/MyRequests'
 import ReviewsDialog from '../components/ReviewsDialog'
 import { useAuth } from '../auth/AuthContext'
-import { Activity, Alert, Heart, Stethoscope } from '../components/Icons'
+import { Alert } from '../components/Icons'
+import { JOB_ICONS } from '../components/jobIcons'
 import { JOBS } from '../constants/jobs'
-
-const ICONS = { CARETAKER: Heart, NURSING: Stethoscope, PHYSIOTHERAPIST: Activity }
 
 export default function SeekerHome({ firstName }) {
   const [params, setParams] = useSearchParams()
@@ -62,12 +61,15 @@ export default function SeekerHome({ firstName }) {
     <section className="content wide seeker">
       <div className="page-head">
         <h1>Hi {firstName}, who are you looking for?</h1>
-        <p className="subtitle">Choose the kind of care you need and we'll show you available people.</p>
+        <p className="subtitle">
+          Choose the kind of care you need and we'll show you available people.{' '}
+          <Link to="/services">Not sure which? See what we provide</Link>
+        </p>
       </div>
 
       <div className="care-tiles" role="radiogroup" aria-label="Type of care">
         {JOBS.map(({ value, label, plural, desc }) => {
-          const Icon = ICONS[value]
+          const Icon = JOB_ICONS[value]
           const active = selected?.value === value
           const n = counts[value]
           return (

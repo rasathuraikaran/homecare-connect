@@ -4,7 +4,8 @@ import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
 import StatusChip from '../components/StatusChip'
-import { Activity, Alert, Heart, HeartHouse, Stethoscope } from '../components/Icons'
+import { Alert, HeartHouse } from '../components/Icons'
+import { JOB_ICONS } from '../components/jobIcons'
 import { JOBS } from '../constants/jobs'
 import { CURRENCY, RATE_TYPES } from '../constants/rates'
 import { DOCUMENT_FILE_TYPES, DOC_LABEL, DOC_TONE, MAX_DOCUMENT } from '../constants/verification'
@@ -13,8 +14,6 @@ import ProfilePreview from '../components/ProfilePreview'
 const MAX_PHOTO = 2 * 1024 * 1024
 const TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const SUGGESTIONS = ['Nursing diploma', 'First aid certified', 'Elderly care certificate', 'Dementia care', 'Physiotherapy assistant']
-
-const JOB_ICONS = { CARETAKER: Heart, NURSING: Stethoscope, PHYSIOTHERAPIST: Activity }
 
 const digits = (v, max) => v.replace(/\D/g, '').slice(0, max)
 

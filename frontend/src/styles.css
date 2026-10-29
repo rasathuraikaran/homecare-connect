@@ -494,3 +494,18 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .rule-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: var(--radius); }
 .rule-row .doc-main { gap: 0; }
 .rule-confirm { grid-column: 1 / -1; display: grid; gap: .5rem; padding: .7rem .8rem; background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: var(--radius); font-size: .9rem; }
+
+.service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.service-card { align-content: start; }
+.service-card h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.01em; }
+.service-card h3 { margin: .35rem 0 0; font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+.service-card p { margin: 0; }
+.service-card ul { margin: 0; padding-left: 1.2rem; display: grid; gap: .25rem; }
+.service-headline { font-weight: 600; color: var(--brand-text); }
+.service-card .link-btn { margin-top: .6rem; }
+.services > .block { margin-top: 1.25rem; }
+.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 1rem; }
+.steps li { display: flex; gap: .9rem; align-items: flex-start; }
+.steps p { margin: .15rem 0 0; color: var(--ink-2); }
+.step-no { flex: none; display: grid; place-items: center; width: 32px; height: 32px; font-weight: 700; color: var(--on-brand); background: var(--brand-600); border-radius: 50%; }
+.know { margin: 0; padding-left: 1.2rem; display: grid; gap: .4rem; color: var(--ink-2); }
