@@ -1,8 +1,11 @@
 package com.homecare.booking;
 
 import com.homecare.notification.NotificationStatus;
+import com.homecare.payment.PaymentInfo;
 import com.homecare.profile.JobType;
 import com.homecare.profile.RateType;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -22,11 +25,18 @@ public final class BookingDtos {
             @NotBlank(message = "Enter a phone number so we can reach you")
             @Pattern(regexp = "^\\+?[0-9 ()-]{7,20}$", message = "Enter a valid phone number") String phone) {}
 
-    public record UpdateStatusRequest(@NotNull(message = "Choose a status") BookingStatus status) {}
+    /** fee is the amount the seeker is asked to pay, and is only for the step that marks a visit completed. */
+    public record UpdateStatusRequest(
+            @NotNull(message = "Choose a status") BookingStatus status,
+            @DecimalMin(value = "0.01", message = "The fee must be more than zero") @DecimalMax(value = "9999999.99", message = "The fee is too large") BigDecimal fee) {}
+
+    public record FeeRequest(
+            @NotNull(message = "Enter the fee") @DecimalMin(value = "0.01", message = "The fee must be more than zero")
+            @DecimalMax(value = "9999999.99", message = "The fee is too large") BigDecimal fee) {}
 
     /** What a care seeker sees about their own request. */
     public record BookingResponse(Long id, BookingStatus status, Long caregiverId, String caregiverName, JobType jobType,
-                                  RateType rateType, BigDecimal quotedAmount, String note, String address, Instant createdAt) {}
+                                  RateType rateType, BigDecimal quotedAmount, String note, String address, Instant createdAt, PaymentInfo payment) {}
 
     public record Person(Long id, String name, String email) {}
 
@@ -36,5 +46,5 @@ public final class BookingDtos {
     /** What the admin sees: both people, the seeker's phone, where the care is needed, and whether the alert was delivered. */
     public record AdminBooking(Long id, BookingStatus status, Instant createdAt, Person seeker, String seekerPhone, String address,
                                Person caregiver, String caregiverAddress, JobType jobType, RateType rateType, BigDecimal quotedAmount,
-                               String note, Alert alert) {}
+                               String note, Alert alert, PaymentInfo payment) {}
 }

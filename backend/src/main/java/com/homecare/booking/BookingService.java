@@ -2,6 +2,9 @@ package com.homecare.booking;
 
 import com.homecare.booking.BookingDtos.*;
 import com.homecare.notification.NotificationService;
+import com.homecare.payment.Payment;
+import com.homecare.payment.PaymentInfo;
+import com.homecare.payment.PaymentRepository;
 import com.homecare.profile.CaregiverProfile;
 import com.homecare.profile.CaregiverProfileRepository;
 import com.homecare.user.User;
@@ -13,7 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** The care seeker's side: ask for a caregiver, see your requests, cancel one that is still waiting. */
 @Service
@@ -26,13 +31,15 @@ public class BookingService {
     private final CaregiverProfileRepository profiles;
     private final UserRepository users;
     private final NotificationService notifications;
+    private final PaymentRepository payments;
 
     public BookingService(BookingRepository bookings, CaregiverProfileRepository profiles, UserRepository users,
-                          NotificationService notifications) {
+                          NotificationService notifications, PaymentRepository payments) {
         this.bookings = bookings;
         this.profiles = profiles;
         this.users = users;
         this.notifications = notifications;
+        this.payments = payments;
     }
 
     @Transactional
@@ -67,13 +74,20 @@ public class BookingService {
 
         User caregiver = users.findById(profile.getUserId()).orElseThrow();
         notifications.queueNewBookingAlert(BookingAlerts.of(booking, seeker, caregiver, profile.getJobType()));   // same transaction as the booking
-        return toResponse(booking, caregiver.getFullName(), profile.getJobType());
+        return toResponse(booking, caregiver.getFullName(), profile.getJobType(), List.of());
     }
 
     @Transactional(readOnly = true)
     public List<BookingResponse> mine(User seeker) {
-        return bookings.forSeeker(seeker.getId(), PageRequest.of(0, LIST_LIMIT)).stream()
-                .map(row -> toResponse((Booking) row[0], (String) row[1], (com.homecare.profile.JobType) row[2]))
+        List<Object[]> rows = bookings.forSeeker(seeker.getId(), PageRequest.of(0, LIST_LIMIT));
+        Map<Long, List<Payment>> paid = new HashMap<>();
+        if (!rows.isEmpty()) {
+            for (Payment p : payments.findByBookingIdIn(rows.stream().map(r -> ((Booking) r[0]).getId()).toList())) {
+                paid.computeIfAbsent(p.getBookingId(), k -> new java.util.ArrayList<>()).add(p);
+            }
+        }
+        return rows.stream()
+                .map(row -> toResponse((Booking) row[0], (String) row[1], (com.homecare.profile.JobType) row[2], paid.getOrDefault(((Booking) row[0]).getId(), List.of())))
                 .toList();
     }
 
@@ -89,8 +103,8 @@ public class BookingService {
         booking.changeStatus(BookingStatus.CANCELLED);
     }
 
-    private static BookingResponse toResponse(Booking b, String caregiverName, com.homecare.profile.JobType job) {
+    private static BookingResponse toResponse(Booking b, String caregiverName, com.homecare.profile.JobType job, List<Payment> paid) {
         return new BookingResponse(b.getId(), b.getStatus(), b.getCaregiverId(), caregiverName, job,
-                b.getRateType(), b.getQuotedAmount(), b.getNote(), b.getAddress(), b.getCreatedAt());
+                b.getRateType(), b.getQuotedAmount(), b.getNote(), b.getAddress(), b.getCreatedAt(), PaymentInfo.of(b, paid));
     }
 }

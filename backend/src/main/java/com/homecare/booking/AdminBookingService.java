@@ -5,6 +5,11 @@ import com.homecare.notification.Notification;
 import com.homecare.notification.NotificationRepository;
 import com.homecare.notification.NotificationService;
 import com.homecare.notification.NotificationStatus;
+import com.homecare.notification.PaymentMessages;
+import com.homecare.payment.Payment;
+import com.homecare.payment.PaymentInfo;
+import com.homecare.payment.PaymentRepository;
+import com.homecare.payment.PaymentService;
 import com.homecare.profile.CaregiverProfile;
 import com.homecare.user.User;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,12 +32,16 @@ public class AdminBookingService {
     private final BookingRepository bookings;
     private final NotificationRepository notifications;
     private final NotificationService notificationService;
+    private final PaymentService paymentService;
+    private final PaymentRepository payments;
 
     public AdminBookingService(BookingRepository bookings, NotificationRepository notifications,
-                               NotificationService notificationService) {
+                               NotificationService notificationService, PaymentService paymentService, PaymentRepository payments) {
         this.bookings = bookings;
         this.notifications = notifications;
         this.notificationService = notificationService;
+        this.paymentService = paymentService;
+        this.payments = payments;
     }
 
     @Transactional(readOnly = true)
@@ -41,15 +52,42 @@ public class AdminBookingService {
         return toAdmin(rows);
     }
 
+    /** fee is only for completing a visit while online payments are on: then it is required, and the seeker is asked to pay it. */
     @Transactional
-    public AdminBooking updateStatus(Long id, BookingStatus next) {
+    public AdminBooking updateStatus(User admin, Long id, BookingStatus next, BigDecimal fee) {
         Booking booking = bookings.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
         if (!booking.getStatus().canMoveTo(next)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "A " + booking.getStatus() + " booking cannot be changed to " + next);
         }
+        boolean askForFee = next == BookingStatus.COMPLETED && paymentService.enabled();
+        if (askForFee) {
+            paymentService.requestFee(admin, booking, fee);   // refuses a missing or silly fee before anything changes
+        } else if (fee != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A fee is only asked for when a visit is marked completed, and only while online payments are on");
+        }
         booking.changeStatus(next);
+        bookings.flush();
+        return one(id);
+    }
+
+    @Transactional
+    public AdminBooking setFee(User admin, Long id, BigDecimal fee) {
+        paymentService.changeFee(admin, id, fee);
+        bookings.flush();
+        return one(id);
+    }
+
+    @Transactional
+    public AdminBooking resendPayment(User admin, Long id) {
+        paymentService.resend(admin, id);
+        return one(id);
+    }
+
+    @Transactional
+    public AdminBooking markPaid(User admin, Long id) {
+        paymentService.markPaidOffline(admin, id);
         bookings.flush();
         return one(id);
     }
@@ -59,7 +97,9 @@ public class AdminBookingService {
     public AdminBooking resendAlert(Long id) {
         Object[] row = bookings.forAdminById(id).stream().findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
-        List<Notification> history = notifications.findByBookingIdInOrderByIdAsc(List.of(id));
+        // the fee emails share the table, but this is about the alert for a new request
+        List<Notification> history = notifications.findByBookingIdInOrderByIdAsc(List.of(id)).stream()
+                .filter(n -> !PaymentMessages.isPaymentTemplate(n.getTemplate())).toList();
         if (!history.isEmpty()) {
             NotificationStatus last = history.get(history.size() - 1).getStatus();
             if (last == NotificationStatus.PENDING || last == NotificationStatus.SENT) {
@@ -78,8 +118,12 @@ public class AdminBookingService {
     private List<AdminBooking> toAdmin(List<Object[]> rows) {
         List<Long> ids = rows.stream().map(r -> ((Booking) r[0]).getId()).toList();
         Map<Long, Notification> latest = new HashMap<>();
+        Map<Long, List<Payment>> paid = new HashMap<>();
         if (!ids.isEmpty()) {
-            for (Notification n : notifications.findByBookingIdInOrderByIdAsc(ids)) latest.put(n.getBookingId(), n); // ascending: last wins
+            for (Notification n : notifications.findByBookingIdInOrderByIdAsc(ids)) {
+                if (!PaymentMessages.isPaymentTemplate(n.getTemplate())) latest.put(n.getBookingId(), n); // ascending: last wins
+            }
+            for (Payment p : payments.findByBookingIdIn(ids)) paid.computeIfAbsent(p.getBookingId(), k -> new ArrayList<>()).add(p);
         }
         return rows.stream().map(r -> {
             Booking b = (Booking) r[0];
@@ -91,7 +135,7 @@ public class AdminBookingService {
             return new AdminBooking(b.getId(), b.getStatus(), b.getCreatedAt(),
                     new Person(seeker.getId(), seeker.getFullName(), seeker.getEmail()), b.getSeekerPhone(), b.getAddress(),
                     new Person(caregiver.getId(), caregiver.getFullName(), caregiver.getEmail()), profile.getAddress(), profile.getJobType(),
-                    b.getRateType(), b.getQuotedAmount(), b.getNote(), alert);
+                    b.getRateType(), b.getQuotedAmount(), b.getNote(), alert, PaymentInfo.of(b, paid.getOrDefault(b.getId(), List.of())));
         }).toList();
     }
 }
