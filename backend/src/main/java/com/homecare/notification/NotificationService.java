@@ -48,6 +48,16 @@ public class NotificationService {
         return notifications.save(n);
     }
 
+    /** Queues an email about the fee to the seeker. Saved with the change that caused it, sent by the background job. */
+    public Notification queueMail(Long bookingId, String recipient, String template, List<String> params) {
+        return notifications.save(Notification.email(bookingId, recipientOrNotSet(recipient), template, "en", toJson(params)));
+    }
+
+    /** The same, to the admin's address. */
+    public Notification queueAdminMail(Long bookingId, String template, List<String> params) {
+        return queueMail(bookingId, email.adminTo(), template, params);
+    }
+
     private static String recipientOrNotSet(String value) {
         return value == null || value.isBlank() ? "not-set" : value.trim();
     }
