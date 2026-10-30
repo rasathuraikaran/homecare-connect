@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import AdminShell from '../components/AdminShell'
 import { Alert } from '../components/Icons'
+import PaymentSettingsPanel from '../components/PaymentSettingsPanel'
 import StatusChip from '../components/StatusChip'
 import { alertLabel, ALERT_TONE, ATTEMPT_TEXT, STATUS_TONE } from '../constants/bookings'
 import { jobLabel } from '../constants/jobs'
@@ -22,7 +23,8 @@ const NEXT = {
 const POLL_MS = 30_000
 const FEE_PERCENT = 5   // what is suggested when a visit is completed; the admin can type anything
 
-const suggestedFee = (b) => (b.quotedAmount != null ? (Math.round(b.quotedAmount * FEE_PERCENT) / 100).toFixed(2) : '')
+const suggestedCharge = (b) => (b.quotedAmount != null ? Number(b.quotedAmount).toFixed(2) : '')
+const feeFor = (charge) => (charge !== '' && Number(charge) > 0 ? (Math.round(Number(charge) * FEE_PERCENT) / 100).toFixed(2) : '')
 
 const when = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 
@@ -31,12 +33,13 @@ export default function AdminPage() {
   const [state, setState] = useState({ status: 'loading', list: [], error: '' })
   const [busyId, setBusyId] = useState(null)
   const [confirmCancel, setConfirmCancel] = useState(null)
-  const [panel, setPanel] = useState(null)   // { id, kind: 'complete' | 'fee' | 'paid', fee }
-  const [payOn, setPayOn] = useState(false)
+  const [panel, setPanel] = useState(null)   // { id, kind: 'complete' | 'fee' | 'paid', charge, fee, feeTouched }
+  const [settings, setSettings] = useState(null)
   const [actionError, setActionError] = useState('')
 
-  // whether online payments are on decides if completing a visit asks for a fee
-  useEffect(() => { api('/payments/config').then((c) => setPayOn(c.mode !== 'OFF')).catch(() => {}) }, [])
+  // which ways of paying are on decides whether completing a visit asks for a fee
+  useEffect(() => { api('/admin/payment-settings').then(setSettings).catch(() => {}) }, [])
+  const payOn = !!settings && (settings.payhere.on || settings.bank.on)
 
   const load = useCallback((silent = false) => {
     if (!silent) setState((s) => ({ ...s, status: 'loading' }))
@@ -73,32 +76,45 @@ export default function AdminPage() {
     }
   }
 
-  const setStatus = (id, status, fee) => run(id, () => api(`/admin/bookings/${id}/status`, { method: 'PATCH', body: fee == null ? { status } : { status, fee } }))
+  const setStatus = (id, status, amounts) => run(id, () => api(`/admin/bookings/${id}/status`, { method: 'PATCH', body: { status, ...amounts } }))
   const resend = (id) => run(id, () => api(`/admin/bookings/${id}/resend-alert`, { method: 'POST' }))
-  const changeFee = (id, fee) => run(id, () => api(`/admin/bookings/${id}/fee`, { method: 'PUT', body: { fee } }))
+  const changeFee = (id, fee, caregiverAmount) => run(id, () => api(`/admin/bookings/${id}/fee`, { method: 'PUT', body: { fee, caregiverAmount } }))
   const resendPayment = (id) => run(id, () => api(`/admin/bookings/${id}/payment/resend`, { method: 'POST' }))
   const markPaid = (id) => run(id, () => api(`/admin/bookings/${id}/payment/mark-paid`, { method: 'POST' }))
 
   function submitFee(e, b) {
     e.preventDefault()
     const fee = Number(panel.fee)
+    const charge = panel.charge === '' ? null : Number(panel.charge)
     if (!(fee > 0)) {
       setActionError('Enter a fee of more than zero.')
       return
     }
-    if (panel.kind === 'complete') setStatus(b.id, 'COMPLETED', fee)
-    else changeFee(b.id, fee)
+    if (charge != null && !(charge >= 0)) {
+      setActionError('The caregiver\u2019s charge cannot be negative.')
+      return
+    }
+    if (panel.kind === 'complete') setStatus(b.id, 'COMPLETED', charge ? { fee, caregiverAmount: charge } : { fee })
+    else changeFee(b.id, fee, charge)
   }
 
-  // with payments on, completing a visit first asks what the care seeker should pay
+  // typing the caregiver's charge fills in the usual fee, until the admin types a fee of their own
+  const setCharge = (value) => setPanel((p) => ({ ...p, charge: value, fee: p.feeTouched ? p.fee : feeFor(value) }))
+
+  // with a way of paying on, completing a visit first asks what the care seeker should pay
   function choose(b, to) {
     setActionError('')
-    if (to === 'COMPLETED' && payOn) setPanel({ id: b.id, kind: 'complete', fee: suggestedFee(b) })
+    if (to === 'COMPLETED' && payOn) {
+      const charge = suggestedCharge(b)
+      setPanel({ id: b.id, kind: 'complete', charge, fee: feeFor(charge), feeTouched: false })
+    }
     else setStatus(b.id, to)
   }
 
   return (
     <AdminShell title="Booking requests" subtitle="Call the care seeker, arrange it with the caregiver, then update the status here.">
+      <PaymentSettingsPanel settings={settings} onChange={setSettings} />
+
       <div className="admin-bar">
         <div className="filters" role="tablist">
           {FILTERS.map((f) => (
@@ -151,24 +167,31 @@ export default function AdminPage() {
               </div>
 
               {b.payment && b.payment.state !== 'NONE' && (
-                <section className="admin-pay" aria-label="Booking fee">
+                <section className="admin-pay" aria-label="Amount to pay">
                   <div className="admin-pay-line">
-                    <span className="label">Booking fee</span>
-                    <strong>{formatMoney(b.payment.fee)}</strong>
+                    <span className="label">Amount to pay</span>
+                    <strong>{formatMoney(b.payment.total)}</strong>
                     <StatusChip label={b.payment.state === 'PAID' ? 'Paid' : 'Unpaid'} tone={b.payment.state === 'PAID' ? 'ok' : 'wait'} />
                     {b.payment.state === 'PAID' && (
-                      <span className="muted small">{when(b.payment.paidAt)} · {b.payment.source === 'MANUAL' ? 'recorded by an admin, outside PayHere' : 'through PayHere'}</span>
+                      <span className="muted small">{when(b.payment.paidAt)} · {b.payment.source === 'MANUAL' ? 'recorded by an admin (bank transfer or cash)' : 'through PayHere'}</span>
                     )}
                     {b.payment.state === 'DUE' && b.payment.lastAttempt && <span className="muted small">{ATTEMPT_TEXT[b.payment.lastAttempt]}</span>}
                   </div>
+                  {b.payment.caregiverAmount != null && (
+                    <span className="muted small">
+                      Caregiver {formatMoney(b.payment.caregiverAmount)} + our fee {formatMoney(b.payment.fee)}
+                      {b.payment.state === 'PAID' && <strong className="pay-out"> · Pay the caregiver {formatMoney(b.payment.caregiverAmount)}</strong>}
+                    </span>
+                  )}
                   {b.payment.needsAttention && (
-                    <div className="alert" role="alert"><Alert />Check this fee in the PayHere dashboard: it was paid more than once, charged back, or paid in a different amount than the fee now set. Refund or fix it there.</div>
+                    <div className="alert" role="alert"><Alert />Check this payment: it was paid more than once, charged back, or paid in a different amount than the total now set. For a card payment, refund or fix it in the PayHere dashboard.</div>
                   )}
                   {b.payment.state === 'DUE' && (
                     <div className="admin-pay-actions">
                       {payOn && <button type="button" className="link" disabled={busy} onClick={() => resendPayment(b.id)}>Send payment email again</button>}
-                      <button type="button" className="link" disabled={busy} onClick={() => setPanel({ id: b.id, kind: 'fee', fee: String(b.payment.fee) })}>Change fee</button>
-                      <button type="button" className="link" disabled={busy} onClick={() => setPanel({ id: b.id, kind: 'paid' })}>Mark paid outside PayHere</button>
+                      <button type="button" className="link" disabled={busy}
+                              onClick={() => setPanel({ id: b.id, kind: 'fee', charge: b.payment.caregiverAmount != null ? String(b.payment.caregiverAmount) : '', fee: String(b.payment.fee), feeTouched: true })}>Change amounts</button>
+                      <button type="button" className="link" disabled={busy} onClick={() => setPanel({ id: b.id, kind: 'paid' })}>Mark paid (bank transfer or cash)</button>
                     </div>
                   )}
                 </section>
@@ -176,21 +199,32 @@ export default function AdminPage() {
 
               {panel?.id === b.id && panel.kind !== 'paid' && (
                 <form className="fee-panel" onSubmit={(e) => submitFee(e, b)}>
-                  <label>
-                    Fee the care seeker pays (LKR)
-                    <input type="number" inputMode="decimal" min="0.01" step="0.01" max="9999999.99" required autoFocus
-                           value={panel.fee} onChange={(e) => setPanel({ ...panel, fee: e.target.value })} />
-                  </label>
+                  <div className="fee-fields">
+                    <label>
+                      Caregiver&apos;s charge (LKR)
+                      <input type="number" inputMode="decimal" min="0" step="0.01" max="9999999.99" autoFocus
+                             value={panel.charge} onChange={(e) => setCharge(e.target.value)} />
+                    </label>
+                    <label>
+                      Our fee (LKR)
+                      <input type="number" inputMode="decimal" min="0.01" step="0.01" max="9999999.99" required
+                             value={panel.fee} onChange={(e) => setPanel({ ...panel, fee: e.target.value, feeTouched: true })} />
+                    </label>
+                    <span className="fee-total">
+                      The care seeker pays
+                      <strong>{formatMoney((Number(panel.charge) || 0) + (Number(panel.fee) || 0))}</strong>
+                    </span>
+                  </div>
                   <span className="hint">
                     {panel.kind === 'complete'
                       ? (b.quotedAmount != null
-                        ? `Suggested: ${FEE_PERCENT}% of the ${formatMoney(b.quotedAmount)} charge. Change it if you agreed something else.`
-                        : 'No charge was chosen for this request, so type the fee you agreed.')
+                        ? `The charge is the ${formatMoney(b.quotedAmount)} asked for; change it if the visit was longer or shorter. Our fee suggests ${FEE_PERCENT}% of it. Leave the charge empty to collect only the fee.`
+                        : `No charge was chosen for this request. Type the charge you agreed (our fee then suggests ${FEE_PERCENT}%), or leave it empty to collect only the fee.`)
                       : 'The care seeker is emailed the new amount.'}
                   </span>
                   <div className="fee-panel-actions">
                     <button type="submit" className="btn-primary small-btn" disabled={busy}>
-                      {panel.kind === 'complete' ? 'Mark completed and ask for payment' : 'Save fee and tell the care seeker'}
+                      {panel.kind === 'complete' ? 'Mark completed and ask for payment' : 'Save and tell the care seeker'}
                     </button>
                     <button type="button" className="btn-ghost" onClick={() => setPanel(null)}>Back</button>
                   </div>
@@ -199,7 +233,7 @@ export default function AdminPage() {
 
               {panel?.id === b.id && panel.kind === 'paid' && (
                 <div className="fee-panel">
-                  <span>Did {b.seeker.name} pay {formatMoney(b.payment.fee)} another way, such as a bank deposit or cash? This cannot be undone here.</span>
+                  <span>Did {b.seeker.name} pay {formatMoney(b.payment.total)} by bank transfer or cash? Check your bank account first. This cannot be undone here.</span>
                   <div className="fee-panel-actions">
                     <button type="button" className="btn-primary small-btn" disabled={busy} onClick={() => markPaid(b.id)}>Yes, mark it paid</button>
                     <button type="button" className="btn-ghost" onClick={() => setPanel(null)}>Not yet</button>

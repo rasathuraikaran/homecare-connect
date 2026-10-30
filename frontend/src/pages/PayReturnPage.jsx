@@ -37,7 +37,7 @@ export default function PayReturnPage() {
       {paid && (
         <>
           <h1>Thank you, payment received</h1>
-          <p>We received {formatMoney(payment.fee)} for request #{id}. A receipt is on its way to your email.</p>
+          <p>We received {formatMoney(payment.total)} for request #{id}. A receipt is on its way to your email.</p>
         </>
       )}
       {failed && (
