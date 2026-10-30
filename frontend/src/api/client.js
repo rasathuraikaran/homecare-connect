@@ -1,5 +1,10 @@
 const TOKEN_KEY = 'homecare.token'
 
+const rawApiBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const API_BASE = rawApiBase
+  ? (rawApiBase.endsWith('/api') ? rawApiBase : `${rawApiBase}/api`)
+  : '/api'
+
 export const tokenStore = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (t) => localStorage.setItem(TOKEN_KEY, t),
@@ -11,7 +16,7 @@ export async function apiBlob(path) {
   const token = tokenStore.get()
   let res
   try {
-    res = await fetch(`/api${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    res = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   } catch {
     throw new Error("Can't reach the server. Check your connection and try again.")
   }
@@ -30,7 +35,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
 
   let res
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
       body: form ?? (body ? JSON.stringify(body) : undefined),
