@@ -1,8 +1,17 @@
 const TOKEN_KEY = 'homecare.token'
 
 const rawApiBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
-const API_BASE = rawApiBase
-  ? (rawApiBase.endsWith('/api') ? rawApiBase : `${rawApiBase}/api`)
+// Avoid browser Mixed Content blocks when the app is served over HTTPS (e.g. CloudFront)
+// and VITE_API_BASE_URL points to an HTTP-only backend; route through same-origin /api/* instead.
+const effectiveBase =
+  typeof window !== 'undefined' &&
+  window.location.protocol === 'https:' &&
+  rawApiBase.startsWith('http://')
+    ? ''
+    : rawApiBase
+
+const API_BASE = effectiveBase
+  ? (effectiveBase.endsWith('/api') ? effectiveBase : `${effectiveBase}/api`)
   : '/api'
 
 export const tokenStore = {

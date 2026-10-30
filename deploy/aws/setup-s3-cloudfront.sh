@@ -10,6 +10,8 @@ set -euo pipefail
 S3_BUCKET="${S3_BUCKET:-}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 OAC_NAME="${OAC_NAME:-${S3_BUCKET}-oac}"
+BACKEND_ORIGIN_DOMAIN="${BACKEND_ORIGIN_DOMAIN:-ec2-32-236-54-158.ap-southeast-2.compute.amazonaws.com}"
+BACKEND_ORIGIN_PORT="${BACKEND_ORIGIN_PORT:-80}"
 
 if [[ -z "$S3_BUCKET" ]]; then
   echo "Error: S3_BUCKET is required."
@@ -83,7 +85,7 @@ DIST_CONFIG="$(cat <<EOF
   " priceClass": "PriceClass_100",
   "DefaultRootObject": "index.html",
   "Origins": {
-    "Quantity": 1,
+    "Quantity": 2,
     "Items": [
       {
         "Id": "S3-${S3_BUCKET}",
@@ -92,6 +94,42 @@ DIST_CONFIG="$(cat <<EOF
         "S3OriginConfig": {
           "OriginAccessIdentity": ""
         }
+      },
+      {
+        "Id": "Backend-API",
+        "DomainName": "${BACKEND_ORIGIN_DOMAIN}",
+        "CustomOriginConfig": {
+          "HTTPPort": ${BACKEND_ORIGIN_PORT},
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only",
+          "OriginSslProtocols": {
+            "Quantity": 1,
+            "Items": ["TLSv1.2"]
+          },
+          "OriginReadTimeout": 30,
+          "OriginKeepaliveTimeout": 5
+        }
+      }
+    ]
+  },
+  "CacheBehaviors": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "PathPattern": "/api/*",
+        "TargetOriginId": "Backend-API",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "AllowedMethods": {
+          "Quantity": 7,
+          "Items": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
+          "CachedMethods": {
+            "Quantity": 2,
+            "Items": ["GET", "HEAD"]
+          }
+        },
+        "Compress": true,
+        "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+        "OriginRequestPolicyId": "b689b0a8-53d0-40ab-baf2-68738e2966ac"
       }
     ]
   },

@@ -30,6 +30,8 @@
         "cloudfront:ListOriginAccessControls",
         "cloudfront:CreateDistribution",
         "cloudfront:GetDistribution",
+        "cloudfront:GetDistributionConfig",
+        "cloudfront:UpdateDistribution",
         "cloudfront:CreateInvalidation",
         "cloudfront:GetInvalidation"
       ],
