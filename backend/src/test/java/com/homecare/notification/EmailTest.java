@@ -53,6 +53,40 @@ class EmailTest {
     }
 
     @Test
+    void aFileCanBeAttached() throws Exception {
+        byte[] file = {(byte) 0x89, 'P', 'N', 'G', 1, 2, 3};
+        assertEquals(EmailSender.Outcome.SENT, sender.send("admin@example.com", "Receipt", "See the file",
+                List.of(new EmailSender.Attachment("receipt-HC7.png", "image/png", file))));
+
+        // write the message out and read it back, as a mail server and a mail program would
+        MimeMessage built = mail.sent.get(0);
+        built.saveChanges();
+        java.io.ByteArrayOutputStream wire = new java.io.ByteArrayOutputStream();
+        built.writeTo(wire);
+        MimeMessage sent = new MimeMessage(jakarta.mail.Session.getInstance(new java.util.Properties()), new java.io.ByteArrayInputStream(wire.toByteArray()));
+
+        assertEquals("Receipt", sent.getSubject());
+        StringBuilder text = new StringBuilder();
+        List<jakarta.mail.Part> files = new java.util.ArrayList<>();
+        walk(sent, text, files);
+        assertTrue(text.toString().contains("See the file"), text.toString());
+        assertEquals(1, files.size());
+        assertEquals("receipt-HC7.png", files.get(0).getFileName());
+        assertArrayEquals(file, files.get(0).getInputStream().readAllBytes());
+    }
+
+    private static void walk(jakarta.mail.Part part, StringBuilder text, List<jakarta.mail.Part> files) throws Exception {
+        if (part.isMimeType("multipart/*")) {
+            jakarta.mail.Multipart nested = (jakarta.mail.Multipart) part.getContent();
+            for (int i = 0; i < nested.getCount(); i++) walk(nested.getBodyPart(i), text, files);
+        } else if (part.getFileName() != null) {
+            files.add(part);
+        } else if (part.isMimeType("text/plain")) {
+            text.append(part.getContent());
+        }
+    }
+
+    @Test
     void aWrongPasswordIsNotRetriedAndTheServersTextIsNotRepeated() {
         mail.failWith = new MailAuthenticationException("535 5.7.8 secret.account@gmail.com credentials rejected");
 

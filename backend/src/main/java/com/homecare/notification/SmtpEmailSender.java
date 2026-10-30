@@ -8,8 +8,14 @@ import org.springframework.mail.MailParseException;
 import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.core.io.ByteArrayResource;
+
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 import java.util.Arrays;
+import java.util.List;
 
 /** Sends plain-text email through an SMTP server such as Gmail's. */
 public class SmtpEmailSender implements EmailSender {
@@ -28,11 +34,36 @@ public class SmtpEmailSender implements EmailSender {
     public Outcome send(String to, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
-        message.setTo(Arrays.stream(to.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toArray(String[]::new));
+        message.setTo(recipients(to));
         message.setSubject(subject);
         message.setText(body);
+        return deliver(to, () -> mail.send(message));
+    }
+
+    @Override
+    public Outcome send(String to, String subject, String body, List<Attachment> attachments) {
+        if (attachments.isEmpty()) return send(to, subject, body);
+        MimeMessage message = mail.createMimeMessage();
         try {
-            mail.send(message);
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(from);
+            helper.setTo(recipients(to));
+            helper.setSubject(subject);
+            helper.setText(body);
+            for (Attachment a : attachments) helper.addAttachment(a.fileName(), new ByteArrayResource(a.content()), a.contentType());
+        } catch (MessagingException e) {
+            throw new EmailSendException("The email could not be built: " + reason(e), false);
+        }
+        return deliver(to, () -> mail.send(message));
+    }
+
+    private static String[] recipients(String to) {
+        return Arrays.stream(to.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toArray(String[]::new);
+    }
+
+    private Outcome deliver(String to, Runnable sendIt) {
+        try {
+            sendIt.run();
             log.info("Email alert sent to {}", mask(to));
             return Outcome.SENT;
         } catch (MailAuthenticationException e) {
