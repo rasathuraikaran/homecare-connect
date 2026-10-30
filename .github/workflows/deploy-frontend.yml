@@ -54,7 +54,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           S3_BUCKET: ${{ vars.S3_BUCKET || 'yarlcare-frontend-prod' }}
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID || 'E35CZ6LR7PHS3W' }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID || 'E3Z8ZJ0P3UPUJ' }}
           AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-2' }}
           SKIP_BUILD: 'true'
         run: bash ./deploy/aws/deploy-frontend.sh
