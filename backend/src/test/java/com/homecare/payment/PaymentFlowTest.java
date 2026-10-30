@@ -45,6 +45,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.payhere.merchant-secret=test-merchant-secret-value",
         "app.payhere.public-api-url=https://api.homecare.test",
         "app.payhere.site-url=https://shop.homecare.test",
+        "app.bank.name=Test Bank",
+        "app.bank.account-name=Karan Rasa",
+        "app.bank.account-number=1234567890",
         "spring.datasource.url=jdbc:h2:mem:payments-flow;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"})   // its own database, apart from the other tests
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -517,6 +520,52 @@ class PaymentFlowTest {
                 .andExpect(jsonPath("$[?(@.id == " + id + ")].alert.channel").value("EMAIL"));
         // sending the alert again looks only at the alert for the new request
         mvc.perform(post("/api/admin/bookings/" + id + "/resend-alert").header("Authorization", s.admin().auth())).andExpect(status().isConflict());
+    }
+
+    @Test
+    void bothWaysCanBeOnAndTheCardPaysTheWholeTotal() throws Exception {
+        Scene s = kit.scene();
+        kit.setSwitches(s.admin(), "{\"bankEnabled\":true}").andExpect(status().isOk());
+        try {
+            mvc.perform(get("/api/payments/config").header("Authorization", s.seeker().auth()))
+                    .andExpect(jsonPath("$.payhere").value(true)).andExpect(jsonPath("$.bank").value(true));
+            String id = kit.completedWithCharge(s, "9000", "450");
+            dispatcher.dispatchDue();
+            String email = mails(s.seeker().email(), "Please pay").get(0).body();
+            assertTrue(email.contains("Pay now") && email.contains("Account number: 1234567890"), "both ways are offered: " + email);
+
+            String res = mvc.perform(post("/api/bookings/" + id + "/pay").header("Authorization", s.seeker().auth()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            String order = JsonPath.read(res, "$.orderId");
+            assertEquals("9450.00", JsonPath.read(res, "$.fields.amount"), "the card pays the caregiver's charge and the fee together");
+            assertEquals(md5(MERCHANT + order + "9450.00" + "LKR" + md5(SECRET)), JsonPath.read(res, "$.fields.hash"));
+            mvc.perform(get("/api/bookings/" + id + "/pay/bank").header("Authorization", s.seeker().auth())).andExpect(status().isOk());
+
+            genuine(order, "450.00", "2").andExpect(status().isBadRequest());   // the fee alone is not what was asked for
+            genuine(order, "9450.00", "2").andExpect(status().isOk());
+            Map<String, Object> seen = kit.seekerView(s.seeker(), id);
+            assertEquals("PAID", seen.get("state"));
+            assertEquals(9450.0, ((Number) seen.get("total")).doubleValue());
+        } finally {
+            kit.setSwitches(s.admin(), "{\"bankEnabled\":false}");
+        }
+    }
+
+    @Test
+    void switchingPayHereOffStopsNewCardPaymentsButStillRecordsMoneyAlreadyTaken() throws Exception {
+        Scene s = kit.scene();
+        String id = kit.completed(s, "200");
+        String order = startPaying(s, id);   // the seeker is already on PayHere's page
+
+        kit.setSwitches(s.admin(), "{\"payhereEnabled\":false}").andExpect(status().isOk()).andExpect(jsonPath("$.payhere.on").value(false));
+        try {
+            mvc.perform(post("/api/bookings/" + id + "/pay").header("Authorization", s.seeker().auth())).andExpect(status().isConflict());
+            mvc.perform(get("/api/payments/config").header("Authorization", s.seeker().auth())).andExpect(jsonPath("$.payhere").value(false));
+            genuine(order, "200.00", "2").andExpect(status().isOk());   // PayHere took the money, so it must be recorded
+            assertEquals("PAID", state(s, id));
+        } finally {
+            kit.setSwitches(s.admin(), "{\"payhereEnabled\":true}");
+        }
     }
 
     @Test

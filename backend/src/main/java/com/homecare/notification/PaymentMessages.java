@@ -8,7 +8,10 @@ import java.util.List;
  */
 public final class PaymentMessages {
 
-    /** To the seeker: [request number, seeker name, caregiver name, amount such as "LKR 500.00", link to the site] */
+    /**
+     * To the seeker: [request number, seeker name, caregiver name, total such as "LKR 500.00", link to the site or "-" when card
+     * payment is off, how the total is made up or "-", the bank details or "-" when bank transfer is off]
+     */
     public static final String FEE_DUE = "fee_due";
     /** To the admin: [request number, seeker name, amount, method, PayHere payment id, link to the admin page] */
     public static final String PAYMENT_RECEIVED = "payment_received";
@@ -21,8 +24,8 @@ public final class PaymentMessages {
         return FEE_DUE.equals(template) || PAYMENT_RECEIVED.equals(template) || PAYMENT_RECEIPT.equals(template);
     }
 
-    public static List<String> feeDue(long bookingId, String seeker, String caregiver, String amount, String link) {
-        return clean("#" + bookingId, seeker, caregiver, amount, link);
+    public static List<String> feeDue(long bookingId, String seeker, String caregiver, String total, String link, String breakdown, String bank) {
+        return clean("#" + bookingId, seeker, caregiver, total, link, breakdown, bank);
     }
 
     public static List<String> paymentReceived(long bookingId, String seeker, String amount, String method, String paymentId, String adminLink) {
@@ -44,15 +47,7 @@ public final class PaymentMessages {
 
     public static String body(String template, List<String> p) {
         return switch (template) {
-            case FEE_DUE -> """
-                    Hello %s,
-
-                    Your visit with %s is marked as completed. The HomeCare Connect fee for request %s is %s.
-
-                    To pay securely with PayHere, sign in and press "Pay now" under Your requests:
-                    %s
-
-                    If you have already paid, or something looks wrong, just reply to our team.""".formatted(at(p, 1), at(p, 2), at(p, 0), at(p, 3), at(p, 4));
+            case FEE_DUE -> feeDueBody(p);
             case PAYMENT_RECEIVED -> """
                     Payment received for request %s.
 
@@ -73,8 +68,32 @@ public final class PaymentMessages {
         };
     }
 
+    /** The way to pay depends on what was switched on when the email was queued, so it is built from the saved values. */
+    private static String feeDueBody(List<String> p) {
+        String link = opt(p, 4), breakdown = opt(p, 5), bank = opt(p, 6);
+        StringBuilder text = new StringBuilder("Hello ").append(at(p, 1)).append(",\n\nYour visit with ").append(at(p, 2))
+                .append(" is marked as completed. The amount to pay for request ").append(at(p, 0)).append(" is ").append(at(p, 3)).append('.');
+        if (breakdown != null) text.append(" (").append(breakdown).append(')');
+        text.append("\n\n");
+        if (link != null) {
+            text.append("To pay by card securely with PayHere, sign in and press \"Pay now\" under Your requests:\n").append(link).append("\n\n");
+        }
+        if (bank != null) {
+            text.append("To pay by bank transfer, send the amount to this account:\n").append(bank)
+                    .append("\nPlease write the reference HC").append(at(p, 0).replace("#", "")).append(" with your transfer so we can match it.\n\n");
+        }
+        if (link == null && bank == null) text.append("Our team will contact you about how to pay.\n\n");
+        return text.append("If you have already paid, or something looks wrong, just reply to our team.").toString();
+    }
+
     private static String at(List<String> p, int i) {
         return i < p.size() ? p.get(i) : "-";
+    }
+
+    /** A value that was given, or null when it is missing or "-" (also for emails queued before the value existed). */
+    private static String opt(List<String> p, int i) {
+        String v = i < p.size() ? p.get(i) : null;
+        return v == null || v.isBlank() || v.equals("-") ? null : v;
     }
 
     private static List<String> clean(String... values) {

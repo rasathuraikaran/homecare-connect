@@ -25,14 +25,19 @@ public final class BookingDtos {
             @NotBlank(message = "Enter a phone number so we can reach you")
             @Pattern(regexp = "^\\+?[0-9 ()-]{7,20}$", message = "Enter a valid phone number") String phone) {}
 
-    /** fee is the amount the seeker is asked to pay, and is only for the step that marks a visit completed. */
+    /**
+     * fee is the platform's fee and caregiverAmount the caregiver's own charge, collected from the seeker together with it.
+     * Both are only for the step that marks a visit completed; caregiverAmount may be left out.
+     */
     public record UpdateStatusRequest(
             @NotNull(message = "Choose a status") BookingStatus status,
-            @DecimalMin(value = "0.01", message = "The fee must be more than zero") @DecimalMax(value = "9999999.99", message = "The fee is too large") BigDecimal fee) {}
+            @DecimalMin(value = "0.01", message = "The fee must be more than zero") @DecimalMax(value = "9999999.99", message = "The fee is too large") BigDecimal fee,
+            @DecimalMin(value = "0.00", message = "The caregiver's charge cannot be negative") @DecimalMax(value = "9999999.99", message = "The caregiver's charge is too large") BigDecimal caregiverAmount) {}
 
     public record FeeRequest(
             @NotNull(message = "Enter the fee") @DecimalMin(value = "0.01", message = "The fee must be more than zero")
-            @DecimalMax(value = "9999999.99", message = "The fee is too large") BigDecimal fee) {}
+            @DecimalMax(value = "9999999.99", message = "The fee is too large") BigDecimal fee,
+            @DecimalMin(value = "0.00", message = "The caregiver's charge cannot be negative") @DecimalMax(value = "9999999.99", message = "The caregiver's charge is too large") BigDecimal caregiverAmount) {}
 
     /** What a care seeker sees about their own request. */
     public record BookingResponse(Long id, BookingStatus status, Long caregiverId, String caregiverName, JobType jobType,

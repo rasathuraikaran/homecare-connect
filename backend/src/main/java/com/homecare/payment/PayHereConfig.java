@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Configuration
-@EnableConfigurationProperties(PayHereProperties.class)
+@EnableConfigurationProperties({PayHereProperties.class, BankDetails.class})
 public class PayHereConfig {
 
     static final String LIVE_URL = "https://www.payhere.lk/pay/checkout";        // PayHere says the www is required

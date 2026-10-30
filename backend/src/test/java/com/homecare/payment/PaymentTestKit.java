@@ -1,11 +1,14 @@
 package com.homecare.payment;
 
+import com.homecare.notification.EmailSender;
 import com.jayway.jsonpath.JsonPath;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -18,6 +21,23 @@ final class PaymentTestKit {
 
     static final String JSON = MediaType.APPLICATION_JSON_VALUE;
     private static final AtomicInteger COUNTER = new AtomicInteger();
+
+    /** A stand-in for the mail server that keeps what was sent. */
+    static class RecordingSender implements EmailSender {
+        record Mail(String to, String subject, String body) {}
+
+        final List<Mail> sent = Collections.synchronizedList(new ArrayList<>());
+
+        @Override
+        public Outcome send(String to, String subject, String body) {
+            sent.add(new Mail(to, subject, body));
+            return Outcome.SENT;
+        }
+
+        List<Mail> to(String address, String subjectStart) {
+            return sent.stream().filter(m -> m.to().equals(address) && m.subject().startsWith(subjectStart)).toList();
+        }
+    }
 
     record Person(String auth, String id, String email) {}
 
@@ -77,6 +97,17 @@ final class PaymentTestKit {
         String id = confirmed(s);
         setStatus(s, id, "{\"status\":\"COMPLETED\",\"fee\":" + fee + "}").andExpect(status().isOk());
         return id;
+    }
+
+    /** A visit marked completed with the caregiver's charge collected together with the fee. @return the request id */
+    String completedWithCharge(Scene s, String caregiverAmount, String fee) throws Exception {
+        String id = confirmed(s);
+        setStatus(s, id, "{\"status\":\"COMPLETED\",\"fee\":" + fee + ",\"caregiverAmount\":" + caregiverAmount + "}").andExpect(status().isOk());
+        return id;
+    }
+
+    ResultActions setSwitches(Person admin, String json) throws Exception {
+        return mvc.perform(put("/api/admin/payment-settings").header("Authorization", admin.auth()).contentType(JSON).content(json));
     }
 
     /** What the seeker is shown about the fee of one of their requests. */

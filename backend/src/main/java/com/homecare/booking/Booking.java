@@ -47,6 +47,10 @@ public class Booking {
     @Column(name = "fee_requested_at")
     private Instant feeRequestedAt;
 
+    /** The caregiver's own charge, collected together with the fee when the seeker pays. Empty when only the fee is asked for. */
+    @Column(name = "caregiver_amount", precision = 10, scale = 2)
+    private BigDecimal caregiverAmount;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -65,10 +69,17 @@ public class Booking {
         this.note = note;
     }
 
-    public void setFee(BigDecimal fee) {
+    public void setFee(BigDecimal fee, BigDecimal caregiverAmount) {
         this.feeAmount = fee;
+        this.caregiverAmount = caregiverAmount;
         this.feeRequestedAt = Instant.now();
         this.updatedAt = Instant.now();
+    }
+
+    /** Everything the seeker pays: the fee plus the caregiver's charge when that is collected too. Empty until a fee is set. */
+    public BigDecimal total() {
+        if (feeAmount == null) return null;
+        return caregiverAmount == null ? feeAmount : feeAmount.add(caregiverAmount);
     }
 
     public void changeStatus(BookingStatus next) {
@@ -86,5 +97,6 @@ public class Booking {
     public String getNote() { return note; }
     public String getAddress() { return address; }
     public BigDecimal getFeeAmount() { return feeAmount; }
+    public BigDecimal getCaregiverAmount() { return caregiverAmount; }
     public Instant getCreatedAt() { return createdAt; }
 }

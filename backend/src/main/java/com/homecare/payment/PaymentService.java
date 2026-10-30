@@ -23,8 +23,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The fee a seeker pays through PayHere after a visit is completed.
- * The amount always comes from our own database, never from the browser, and a payment only counts when PayHere's
+ * What a seeker pays after a visit is completed: the platform's fee, plus the caregiver's own charge when the admin collects it too.
+ * They pay through PayHere or by bank transfer, whichever the admin has switched on.
+ * The amount always comes from our own database, never from the browser, and an online payment only counts when PayHere's
  * signed callback says so: the page the seeker returns to proves nothing.
  */
 @Service
@@ -37,47 +38,56 @@ public class PaymentService {
     /** What the browser needs to start paying: a form to post to PayHere, or, when simulated, our own pretend page. */
     public record Checkout(String mode, String actionUrl, Map<String, String> fields, String orderId) {}
 
+    /** Where to send the money for a bank transfer, and what to write with it so the admin can match it. */
+    public record BankInfo(String bank, String branch, String accountName, String accountNumber, String reference, BigDecimal total) {}
+
     private final PaymentRepository payments;
     private final BookingRepository bookings;
     private final UserRepository users;
     private final NotificationService notifications;
     private final PayHereSettings settings;
+    private final PaymentOptions options;
+    private final BankDetails bank;
 
     public PaymentService(PaymentRepository payments, BookingRepository bookings, UserRepository users,
-                          NotificationService notifications, PayHereSettings settings) {
+                          NotificationService notifications, PayHereSettings settings, PaymentOptions options, BankDetails bank) {
         this.payments = payments;
         this.bookings = bookings;
         this.users = users;
         this.notifications = notifications;
         this.settings = settings;
+        this.options = options;
+        this.bank = bank;
     }
 
     public PayMode mode() {
         return settings.mode();
     }
 
+    /** Whether any way of paying is switched on, so completing a visit asks for a fee. */
     public boolean enabled() {
-        return settings.mode().enabled();
+        return options.anyOn();
     }
 
     // ------------------------------------------------------------------ the admin's side
 
     /** Sets the fee when a visit is completed, and tells the seeker. Called inside the admin's status change. */
     @Transactional
-    public void requestFee(User admin, Booking booking, BigDecimal fee) {
-        booking.setFee(checkFee(fee));
+    public void requestFee(User admin, Booking booking, BigDecimal fee, BigDecimal caregiverAmount) {
+        booking.setFee(checkFee(fee), checkCaregiverAmount(caregiverAmount));
         queueFeeDue(booking);
         log.info("Admin {} asked for a fee on request {}", admin.getId(), booking.getId());
     }
 
     @Transactional
-    public void changeFee(User admin, Long bookingId, BigDecimal fee) {
+    public void changeFee(User admin, Long bookingId, BigDecimal fee, BigDecimal caregiverAmount) {
         Booking booking = lockedBooking(bookingId);
         requireUnpaidFee(booking);
         BigDecimal amount = checkFee(fee);
+        BigDecimal charge = checkCaregiverAmount(caregiverAmount);
         // an attempt for the old amount can no longer succeed: PayHere's answer is checked against what we asked for
         payments.findByBookingIdOrderByIdAsc(bookingId).stream().filter(p -> p.getStatus() == PaymentStatus.PENDING).forEach(Payment::cancelAttempt);
-        booking.setFee(amount);
+        booking.setFee(amount, charge);
         queueFeeDue(booking);
         log.info("Admin {} changed the fee of request {}", admin.getId(), bookingId);
     }
@@ -85,7 +95,7 @@ public class PaymentService {
     /** Sends the "please pay" email again. */
     @Transactional
     public void resend(User admin, Long bookingId) {
-        if (!enabled()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Online payments are switched off, so there is no link to send");
+        if (!enabled()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Paying is switched off, so there is nothing to send");
         Booking booking = lockedBooking(bookingId);
         requireUnpaidFee(booking);
         queueFeeDue(booking);
@@ -97,7 +107,7 @@ public class PaymentService {
     public void markPaidOffline(User admin, Long bookingId) {
         Booking booking = lockedBooking(bookingId);
         requireUnpaidFee(booking);
-        Payment payment = payments.save(Payment.offline(bookingId, "MANUAL-" + bookingId + "-" + shortId(), booking.getFeeAmount(), CURRENCY));
+        Payment payment = payments.save(Payment.offline(bookingId, "MANUAL-" + bookingId + "-" + shortId(), booking.total(), CURRENCY));
         sendReceipt(booking, payment);
         log.info("Admin {} recorded an offline payment for request {}", admin.getId(), bookingId);
     }
@@ -106,7 +116,7 @@ public class PaymentService {
 
     @Transactional
     public Checkout startCheckout(User seeker, Long bookingId) {
-        if (!enabled()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Online payments are switched off right now");
+        if (!options.payhereOn()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Paying by card is switched off right now");
         Booking booking = bookings.findForUpdate(bookingId)
                 .filter(b -> b.getSeekerId().equals(seeker.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
@@ -116,7 +126,7 @@ public class PaymentService {
         if (isPaid(bookingId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "This fee is already paid");
 
         String orderId = "HC" + bookingId + "-" + shortId();
-        BigDecimal amount = booking.getFeeAmount();
+        BigDecimal amount = booking.total();
         payments.save(new Payment(bookingId, orderId, amount, CURRENCY, PaymentSource.PAYHERE));
         if (settings.mode() == PayMode.SIMULATED) return new Checkout("SIMULATED", null, Map.of(), orderId);
 
@@ -146,6 +156,21 @@ public class PaymentService {
         return new Checkout(settings.mode().name(), settings.checkoutUrl(), f, orderId);
     }
 
+    /** The bank account and the reference for a seeker's own unpaid request, while bank transfers are switched on. */
+    @Transactional(readOnly = true)
+    public BankInfo bankInfo(User seeker, Long bookingId) {
+        Booking booking = bookings.findById(bookingId)
+                .filter(b -> b.getSeekerId().equals(seeker.getId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        if (!options.bankOn()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Paying by bank transfer is switched off right now");
+        if (booking.getStatus() != BookingStatus.COMPLETED || booking.getFeeAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "There is nothing to pay for this request");
+        }
+        if (isPaid(bookingId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "This is already paid");
+        return new BankInfo(bank.name().trim(), bank.branch() == null ? "" : bank.branch().trim(), bank.accountName().trim(),
+                bank.accountNumber().trim(), "HC" + bookingId, booking.total());
+    }
+
     // ------------------------------------------------------------------ PayHere's callback
 
     /**
@@ -154,7 +179,7 @@ public class PaymentService {
      */
     @Transactional
     public boolean handleNotification(Map<String, String> p) {
-        if (!enabled()) return false;
+        if (!settings.mode().enabled()) return false;   // not the admin's switch: money PayHere already took must still be recorded
         String merchantId = p.get("merchant_id"), orderId = p.get("order_id"), amountText = p.get("payhere_amount");
         String currency = p.get("payhere_currency"), code = p.get("status_code"), signature = p.get("md5sig");
         if (blank(merchantId) || blank(orderId) || blank(amountText) || blank(currency) || blank(code) || blank(signature)) {
@@ -255,9 +280,12 @@ public class PaymentService {
     private void queueFeeDue(Booking booking) {
         User seeker = users.findById(booking.getSeekerId()).orElseThrow();
         User caregiver = users.findById(booking.getCaregiverId()).orElseThrow();
+        String breakdown = booking.getCaregiverAmount() == null ? "-"
+                : "LKR " + PayHereSigner.amount(booking.getCaregiverAmount()) + " for the caregiver + LKR " + PayHereSigner.amount(booking.getFeeAmount()) + " service fee";
         notifications.queueMail(booking.getId(), seeker.getEmail(), PaymentMessages.FEE_DUE,
                 PaymentMessages.feeDue(booking.getId(), seeker.getFullName(), caregiver.getFullName(),
-                        "LKR " + PayHereSigner.amount(booking.getFeeAmount()), settings.siteUrl()));
+                        "LKR " + PayHereSigner.amount(booking.total()), options.payhereOn() ? settings.siteUrl() : "-",
+                        breakdown, options.bankOn() ? bank.emailText() : "-"));
     }
 
     private Booking lockedBooking(Long id) {
@@ -282,6 +310,16 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The fee must be more than zero and at most 9,999,999.99");
         }
         return amount;
+    }
+
+    /** The caregiver's own charge is optional: empty or zero means only the fee is collected. */
+    private static BigDecimal checkCaregiverAmount(BigDecimal charge) {
+        if (charge == null) return null;
+        BigDecimal amount = charge.setScale(2, RoundingMode.HALF_UP);
+        if (amount.signum() < 0 || amount.compareTo(MAX_FEE) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The caregiver's charge must be at most 9,999,999.99");
+        }
+        return amount.signum() == 0 ? null : amount;
     }
 
     private static String shortId() {

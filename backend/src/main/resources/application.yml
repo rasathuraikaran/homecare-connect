@@ -54,6 +54,12 @@ app:
     public-api-url: ${PUBLIC_API_URL:}
     # Where families are sent back to after paying
     site-url: ${PUBLIC_URL:${CORS_ORIGIN:http://localhost:5173}}
+  bank:
+    # The account seekers send money to when the admin switches on bank transfers. Shown only to a seeker who owes a fee.
+    name: ${BANK_NAME:}
+    account-name: ${BANK_ACCOUNT_NAME:}
+    account-number: ${BANK_ACCOUNT_NUMBER:}
+    branch: ${BANK_BRANCH:}
   notifications:
     # How the admin hears about a booking request: email or whatsapp
     channel: ${NOTIFY_CHANNEL:email}

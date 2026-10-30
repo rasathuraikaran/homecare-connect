@@ -26,13 +26,13 @@ public class AdminBookingController {
 
     @PatchMapping("/{id}/status")
     public AdminBooking updateStatus(@AuthenticationPrincipal User admin, @PathVariable Long id, @Valid @RequestBody UpdateStatusRequest req) {
-        return service.updateStatus(admin, id, req.status(), req.fee());
+        return service.updateStatus(admin, id, req.status(), req.fee(), req.caregiverAmount());
     }
 
-    /** Changes the fee of a completed visit while it is still unpaid, and tells the seeker. */
+    /** Changes the fee (and the caregiver's charge) of a completed visit while it is still unpaid, and tells the seeker. */
     @PutMapping("/{id}/fee")
     public AdminBooking setFee(@AuthenticationPrincipal User admin, @PathVariable Long id, @Valid @RequestBody FeeRequest req) {
-        return service.setFee(admin, id, req.fee());
+        return service.setFee(admin, id, req.fee(), req.caregiverAmount());
     }
 
     @PostMapping("/{id}/payment/resend")

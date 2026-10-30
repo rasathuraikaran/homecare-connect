@@ -52,9 +52,12 @@ public class AdminBookingService {
         return toAdmin(rows);
     }
 
-    /** fee is only for completing a visit while online payments are on: then it is required, and the seeker is asked to pay it. */
+    /**
+     * The fee (and the caregiver's charge collected with it) is only for completing a visit while a way of paying is switched on:
+     * then the fee is required, and the seeker is asked to pay. With both ways off, completing asks for nothing.
+     */
     @Transactional
-    public AdminBooking updateStatus(User admin, Long id, BookingStatus next, BigDecimal fee) {
+    public AdminBooking updateStatus(User admin, Long id, BookingStatus next, BigDecimal fee, BigDecimal caregiverAmount) {
         Booking booking = bookings.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
         if (!booking.getStatus().canMoveTo(next)) {
@@ -63,9 +66,9 @@ public class AdminBookingService {
         }
         boolean askForFee = next == BookingStatus.COMPLETED && paymentService.enabled();
         if (askForFee) {
-            paymentService.requestFee(admin, booking, fee);   // refuses a missing or silly fee before anything changes
-        } else if (fee != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A fee is only asked for when a visit is marked completed, and only while online payments are on");
+            paymentService.requestFee(admin, booking, fee, caregiverAmount);   // refuses a missing or silly amount before anything changes
+        } else if (fee != null || caregiverAmount != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A fee is only asked for when a visit is marked completed, and only while a way of paying is switched on");
         }
         booking.changeStatus(next);
         bookings.flush();
@@ -73,8 +76,8 @@ public class AdminBookingService {
     }
 
     @Transactional
-    public AdminBooking setFee(User admin, Long id, BigDecimal fee) {
-        paymentService.changeFee(admin, id, fee);
+    public AdminBooking setFee(User admin, Long id, BigDecimal fee, BigDecimal caregiverAmount) {
+        paymentService.changeFee(admin, id, fee, caregiverAmount);
         bookings.flush();
         return one(id);
     }
