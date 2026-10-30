@@ -227,7 +227,7 @@ a.btn-ghost:hover { text-decoration: none; }
 }
 
 /* never clip fields: wrap instead of squeezing */
-.identity-fields .row { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.identity-fields .row { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
 
 /* large screens: scale the whole form up */
 @media (min-width: 1400px) {
@@ -278,7 +278,7 @@ a.btn-ghost:hover { text-decoration: none; }
 .empty-hint { text-align: center; padding: 2.5rem 0; color: var(--ink-3); }
 .results-title { display: flex; align-items: center; gap: .6rem; margin: 0 0 1.1rem; font-size: 1.3rem; letter-spacing: -.01em; }
 .results-count { padding: .1rem .6rem; font-size: .85rem; font-weight: 600; color: var(--brand-text); background: var(--brand-50); border-radius: 999px; }
-.cg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+.cg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 1rem; }
 .cg-card { display: grid; justify-items: center; align-content: start; gap: .5rem; padding: 1.75rem 1.25rem; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; transition: box-shadow .15s, transform .15s; }
 a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 / 8%); transform: translateY(-2px); }
 .cg-avatar { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; }
@@ -292,7 +292,7 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 @media (max-width: 760px) { .care-tiles { grid-template-columns: 1fr; } .care-tile { grid-template-columns: auto 1fr; column-gap: 1rem; align-items: center; } .care-icon { grid-row: span 3; margin: 0; } .care-count { justify-self: start; margin-top: .3rem; } }
 
 /* charges */
-.rates { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .8rem; }
+.rates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: .8rem; }
 .rate { display: grid; align-content: start; gap: .8rem; padding: .95rem 1rem; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); transition: border-color .15s, background .15s, box-shadow .15s; }
 .rate:hover { border-color: var(--ink-3); }
 .rate.on { border-color: var(--brand-600); background: var(--brand-50); }
@@ -342,7 +342,7 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .small { font-size: .88rem; }
 .progress { height: 12px; background: var(--brand-100); border-radius: 999px; overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--brand-600); border-radius: inherit; transition: width .5s ease; }
-.todo { margin: .4rem 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .5rem .75rem; }
+.todo { margin: .4rem 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: .5rem .75rem; }
 .todo li { display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: .5rem .75rem; border: 1px solid var(--line); border-radius: var(--radius); }
 .todo li.done { color: var(--ink-3); background: var(--bg); border-color: transparent; }
 .todo li:not(.done):hover { border-color: var(--brand-600); background: var(--brand-50); }
@@ -432,7 +432,7 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 
 .my-requests { margin-top: 2.5rem; }
 .my-requests h2 { margin: 0; font-size: 1.25rem; }
-.bk-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .75rem; }
+.bk-list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
 .bk-list li { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem 1rem; padding: .9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); }
 .bk-main { display: grid; flex: 1 1 220px; gap: .1rem; }
 .bk-confirm { display: inline-flex; gap: .5rem; }
@@ -460,7 +460,7 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .admin-card { gap: 1.1rem; }
 .admin-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; }
 .admin-card-head .status-chip { margin-left: auto; }
-.admin-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; }
+.admin-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 1.25rem; }
 .admin-people > div { display: grid; align-content: start; gap: .15rem; min-width: 0; overflow-wrap: anywhere; }
 .label { font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
 .admin-note { margin-top: .3rem; padding: .5rem .7rem; font-style: italic; color: var(--ink-2); background: var(--bg); border-radius: 8px; white-space: pre-line; }
@@ -482,7 +482,7 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 
 .pay-settings { gap: .7rem; margin-bottom: 1.25rem; }
 .pay-settings h2 { margin: 0; font-size: 1.1rem; }
-.pay-ways { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: .75rem; }
+.pay-ways { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: .75rem; }
 .switch-row { display: flex; align-items: flex-start; gap: .75rem; height: 100%; padding: .75rem .9rem; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; }
 .switch-row.off { background: var(--bg); }
 .switch-row > span { display: grid; gap: .1rem; }
@@ -545,14 +545,14 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .required-tag { padding: .1rem .5rem; font-size: .72rem; font-weight: 700; color: var(--danger); background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: 999px; }
 
 .rules { display: grid; gap: .9rem; margin-bottom: 1.5rem; }
-.rules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.rules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 1rem; }
 .rules-job { display: grid; align-content: start; gap: .6rem; }
 .rules-job h3 { margin: 0; font-size: 1rem; }
 .rule-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: var(--radius); }
 .rule-row .doc-main { gap: 0; }
 .rule-confirm { grid-column: 1 / -1; display: grid; gap: .5rem; padding: .7rem .8rem; background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: var(--radius); font-size: .9rem; }
 
-.service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
 .service-card { align-content: start; }
 .service-card h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.01em; }
 .service-card h3 { margin: .35rem 0 0; font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
@@ -566,3 +566,15 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .steps p { margin: .15rem 0 0; color: var(--ink-2); }
 .step-no { flex: none; display: grid; place-items: center; width: 32px; height: 32px; font-weight: 700; color: var(--on-brand); background: var(--brand-600); border-radius: 50%; }
 .know { margin: 0; padding-left: 1.2rem; display: grid; gap: .4rem; color: var(--ink-2); }
+
+/* phones: the top bar wraps instead of squeezing its buttons, and the bank details stack label over value */
+@media (max-width: 560px) {
+  .topbar { flex-wrap: wrap; gap: .5rem .75rem; padding: .6rem 1rem; }
+  .brand { font-size: .98rem; }
+  .user { flex-wrap: wrap; gap: .5rem; margin-left: auto; }
+  .topbar .btn-ghost { height: 34px; padding: 0 .7rem; font-size: .85rem; white-space: nowrap; }
+  .bank-box > div { flex-direction: column; gap: 0; }
+  .bank-box dt { min-width: 0; }
+  .admin-tabs { overflow-x: auto; }
+  .admin-tab { padding: .6rem .75rem; font-size: .92rem; white-space: nowrap; }
+}
