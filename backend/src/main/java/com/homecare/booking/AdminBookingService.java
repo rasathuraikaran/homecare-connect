@@ -8,6 +8,8 @@ import com.homecare.notification.NotificationStatus;
 import com.homecare.notification.PaymentMessages;
 import com.homecare.payment.Payment;
 import com.homecare.payment.PaymentInfo;
+import com.homecare.payment.PaymentReceipt;
+import com.homecare.payment.PaymentReceiptRepository;
 import com.homecare.payment.PaymentRepository;
 import com.homecare.payment.PaymentService;
 import com.homecare.profile.CaregiverProfile;
@@ -34,14 +36,17 @@ public class AdminBookingService {
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final PaymentRepository payments;
+    private final PaymentReceiptRepository receipts;
 
     public AdminBookingService(BookingRepository bookings, NotificationRepository notifications,
-                               NotificationService notificationService, PaymentService paymentService, PaymentRepository payments) {
+                               NotificationService notificationService, PaymentService paymentService, PaymentRepository payments,
+                               PaymentReceiptRepository receipts) {
         this.bookings = bookings;
         this.notifications = notifications;
         this.notificationService = notificationService;
         this.paymentService = paymentService;
         this.payments = payments;
+        this.receipts = receipts;
     }
 
     @Transactional(readOnly = true)
@@ -122,11 +127,13 @@ public class AdminBookingService {
         List<Long> ids = rows.stream().map(r -> ((Booking) r[0]).getId()).toList();
         Map<Long, Notification> latest = new HashMap<>();
         Map<Long, List<Payment>> paid = new HashMap<>();
+        Map<Long, List<PaymentReceipt>> sent = new HashMap<>();
         if (!ids.isEmpty()) {
             for (Notification n : notifications.findByBookingIdInOrderByIdAsc(ids)) {
                 if (!PaymentMessages.isPaymentTemplate(n.getTemplate())) latest.put(n.getBookingId(), n); // ascending: last wins
             }
             for (Payment p : payments.findByBookingIdIn(ids)) paid.computeIfAbsent(p.getBookingId(), k -> new ArrayList<>()).add(p);
+            for (PaymentReceipt r : receipts.findByBookingIdIn(ids)) sent.computeIfAbsent(r.getBookingId(), k -> new ArrayList<>()).add(r);
         }
         return rows.stream().map(r -> {
             Booking b = (Booking) r[0];
@@ -138,7 +145,7 @@ public class AdminBookingService {
             return new AdminBooking(b.getId(), b.getStatus(), b.getCreatedAt(),
                     new Person(seeker.getId(), seeker.getFullName(), seeker.getEmail()), b.getSeekerPhone(), b.getAddress(),
                     new Person(caregiver.getId(), caregiver.getFullName(), caregiver.getEmail()), profile.getAddress(), profile.getJobType(),
-                    b.getRateType(), b.getQuotedAmount(), b.getNote(), alert, PaymentInfo.of(b, paid.getOrDefault(b.getId(), List.of())));
+                    b.getRateType(), b.getQuotedAmount(), b.getNote(), alert, PaymentInfo.of(b, paid.getOrDefault(b.getId(), List.of()), sent.getOrDefault(b.getId(), List.of())));
         }).toList();
     }
 }

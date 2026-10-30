@@ -13,6 +13,8 @@ import com.homecare.user.User;
 import com.homecare.user.UserRepository;
 import com.homecare.verification.CaregiverDocument;
 import com.homecare.verification.CaregiverDocumentRepository;
+import com.homecare.payment.PaymentReceiptRepository;
+import com.homecare.payment.ReceiptStorage;
 import com.homecare.verification.DocumentStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +44,12 @@ public class AdminUserService {
     private final ReviewRepository reviews;
     private final PhotoStorage photos;
     private final DocumentStorage documentFiles;
+    private final PaymentReceiptRepository receipts;
+    private final ReceiptStorage receiptFiles;
 
     public AdminUserService(UserRepository users, CaregiverProfileRepository profiles, CaregiverDocumentRepository documents,
-                            BookingRepository bookings, ReviewRepository reviews, PhotoStorage photos, DocumentStorage documentFiles) {
+                            BookingRepository bookings, ReviewRepository reviews, PhotoStorage photos, DocumentStorage documentFiles,
+                            PaymentReceiptRepository receipts, ReceiptStorage receiptFiles) {
         this.users = users;
         this.profiles = profiles;
         this.documents = documents;
@@ -52,6 +57,8 @@ public class AdminUserService {
         this.reviews = reviews;
         this.photos = photos;
         this.documentFiles = documentFiles;
+        this.receipts = receipts;
+        this.receiptFiles = receiptFiles;
     }
 
     @Transactional(readOnly = true)
@@ -95,11 +102,12 @@ public class AdminUserService {
 
         String photo = profiles.findById(id).map(CaregiverProfile::getPhotoFile).orElse(null);
         List<String> files = documents.findByUserId(id).stream().map(CaregiverDocument::getFileName).toList();
+        List<String> receiptNames = receipts.fileNamesForUser(id);   // read before the requests are deleted
 
         users.delete(target);
         users.flush();   // surface any database problem now, before anything is removed from disk
 
-        deleteFilesAfterCommit(photo, files);
+        deleteFilesAfterCommit(photo, files, receiptNames);
         log.info("Admin {} deleted {} account {}", admin.getId(), target.getRole(), id);   // who and what, never the person's details
     }
 
@@ -107,10 +115,11 @@ public class AdminUserService {
         return users.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
-    private void deleteFilesAfterCommit(String photo, List<String> documentNames) {
+    private void deleteFilesAfterCommit(String photo, List<String> documentNames, List<String> receiptNames) {
         Runnable remove = () -> {
             photos.delete(photo);
             documentNames.forEach(documentFiles::delete);
+            receiptNames.forEach(receiptFiles::delete);
         };
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

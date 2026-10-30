@@ -14,14 +14,18 @@ import java.util.List;
  * payment, a charge back, or money that does not match the total, which only a person can sort out.
  */
 public record PaymentInfo(BigDecimal fee, BigDecimal caregiverAmount, BigDecimal total, String state, Instant paidAt,
-                          String lastAttempt, String source, boolean needsAttention) {
+                          String lastAttempt, String source, boolean needsAttention, List<ReceiptInfo> receipts) {
+
+    /** A bank transfer receipt the seeker sent. The file itself is only for the admin. */
+    public record ReceiptInfo(Long id, Instant uploadedAt, String note) {}
 
     public static final String NONE = "NONE";
     public static final String DUE = "DUE";
     public static final String PAID = "PAID";
 
-    public static PaymentInfo of(Booking booking, List<Payment> payments) {
-        if (booking.getFeeAmount() == null) return new PaymentInfo(null, null, null, NONE, null, null, null, false);
+    public static PaymentInfo of(Booking booking, List<Payment> payments, List<PaymentReceipt> sent) {
+        List<ReceiptInfo> receipts = sent.stream().map(r -> new ReceiptInfo(r.getId(), r.getUploadedAt(), r.getNote())).toList();
+        if (booking.getFeeAmount() == null) return new PaymentInfo(null, null, null, NONE, null, null, null, false, receipts);
         BigDecimal total = booking.total();
         List<Payment> paid = payments.stream().filter(p -> p.getStatus() == PaymentStatus.PAID).toList();
         // a double payment, a charge back, or money that does not match the total (it was changed after the seeker started paying)
@@ -30,9 +34,9 @@ public record PaymentInfo(BigDecimal fee, BigDecimal caregiverAmount, BigDecimal
                 || paid.stream().anyMatch(p -> p.getAmount().compareTo(total) != 0);
         if (!paid.isEmpty()) {
             Payment first = paid.stream().min(Comparator.comparing(Payment::getPaidAt)).orElseThrow();
-            return new PaymentInfo(booking.getFeeAmount(), booking.getCaregiverAmount(), total, PAID, first.getPaidAt(), null, first.getSource().name(), attention);
+            return new PaymentInfo(booking.getFeeAmount(), booking.getCaregiverAmount(), total, PAID, first.getPaidAt(), null, first.getSource().name(), attention, receipts);
         }
         String last = payments.stream().max(Comparator.comparing(Payment::getId)).map(p -> p.getStatus().name()).orElse(null);
-        return new PaymentInfo(booking.getFeeAmount(), booking.getCaregiverAmount(), total, DUE, null, last, null, attention);
+        return new PaymentInfo(booking.getFeeAmount(), booking.getCaregiverAmount(), total, DUE, null, last, null, attention, receipts);
     }
 }

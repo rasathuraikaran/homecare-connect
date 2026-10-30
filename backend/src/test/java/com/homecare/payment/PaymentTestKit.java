@@ -24,13 +24,18 @@ final class PaymentTestKit {
 
     /** A stand-in for the mail server that keeps what was sent. */
     static class RecordingSender implements EmailSender {
-        record Mail(String to, String subject, String body) {}
+        record Mail(String to, String subject, String body, List<Attachment> attachments) {}
 
         final List<Mail> sent = Collections.synchronizedList(new ArrayList<>());
 
         @Override
         public Outcome send(String to, String subject, String body) {
-            sent.add(new Mail(to, subject, body));
+            return send(to, subject, body, List.of());
+        }
+
+        @Override
+        public Outcome send(String to, String subject, String body, List<Attachment> attachments) {
+            sent.add(new Mail(to, subject, body, attachments));
             return Outcome.SENT;
         }
 

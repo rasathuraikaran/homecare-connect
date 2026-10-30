@@ -13,6 +13,8 @@ public final class PaymentMessages {
      * payment is off, how the total is made up or "-", the bank details or "-" when bank transfer is off]
      */
     public static final String FEE_DUE = "fee_due";
+    /** To the admin, with the receipt attached: [request number, seeker name, total, the seeker's note or "-", link to the admin page, receipt id] */
+    public static final String RECEIPT_UPLOADED = "receipt_uploaded";
     /** To the admin: [request number, seeker name, amount, method, PayHere payment id, link to the admin page] */
     public static final String PAYMENT_RECEIVED = "payment_received";
     /** To the seeker: [request number, seeker name, caregiver name, amount, method] */
@@ -21,11 +23,24 @@ public final class PaymentMessages {
     private PaymentMessages() {}
 
     public static boolean isPaymentTemplate(String template) {
-        return FEE_DUE.equals(template) || PAYMENT_RECEIVED.equals(template) || PAYMENT_RECEIPT.equals(template);
+        return FEE_DUE.equals(template) || PAYMENT_RECEIVED.equals(template) || PAYMENT_RECEIPT.equals(template) || RECEIPT_UPLOADED.equals(template);
     }
 
     public static List<String> feeDue(long bookingId, String seeker, String caregiver, String total, String link, String breakdown, String bank) {
         return clean("#" + bookingId, seeker, caregiver, total, link, breakdown, bank);
+    }
+
+    public static List<String> receiptUploaded(long bookingId, String seeker, String total, String note, String adminLink, long receiptId) {
+        return clean("#" + bookingId, seeker, total, note, adminLink, String.valueOf(receiptId));
+    }
+
+    /** The id of the receipt whose file goes with a receipt_uploaded email, or null when the values do not hold one. */
+    public static Long receiptId(List<String> p) {
+        try {
+            return p.size() > 5 ? Long.valueOf(p.get(5)) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     public static List<String> paymentReceived(long bookingId, String seeker, String amount, String method, String paymentId, String adminLink) {
@@ -39,6 +54,7 @@ public final class PaymentMessages {
     public static String subject(String template, List<String> p) {
         return switch (template) {
             case FEE_DUE -> "Please pay your HomeCare Connect fee for request " + at(p, 0);
+            case RECEIPT_UPLOADED -> "Receipt received for request " + at(p, 0);
             case PAYMENT_RECEIVED -> "Payment received for request " + at(p, 0);
             case PAYMENT_RECEIPT -> "Your payment for request " + at(p, 0) + " was received";
             default -> throw new IllegalArgumentException("Not a payment message: " + template);
@@ -48,6 +64,16 @@ public final class PaymentMessages {
     public static String body(String template, List<String> p) {
         return switch (template) {
             case FEE_DUE -> feeDueBody(p);
+            case RECEIPT_UPLOADED -> """
+                    %s says they paid by bank transfer, and sent the receipt (attached).
+
+                    Request: %s
+                    Amount: %s
+                    Reference they should have used: HC%s
+                    Their note: %s
+
+                    Check your bank account. When the money is there, open the admin page and press "Mark paid":
+                    %s""".formatted(at(p, 1), at(p, 0), at(p, 2), at(p, 0).replace("#", ""), opt(p, 3) == null ? "None" : opt(p, 3), at(p, 4));
             case PAYMENT_RECEIVED -> """
                     Payment received for request %s.
 

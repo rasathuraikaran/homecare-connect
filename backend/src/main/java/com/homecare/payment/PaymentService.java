@@ -7,11 +7,15 @@ import com.homecare.notification.NotificationService;
 import com.homecare.notification.PaymentMessages;
 import com.homecare.user.User;
 import com.homecare.user.UserRepository;
+import com.homecare.verification.DocumentStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -38,6 +42,9 @@ public class PaymentService {
     /** What the browser needs to start paying: a form to post to PayHere, or, when simulated, our own pretend page. */
     public record Checkout(String mode, String actionUrl, Map<String, String> fields, String orderId) {}
 
+    /** A receipt file for the admin to open. */
+    public record StoredReceipt(Resource resource, MediaType type) {}
+
     /** Where to send the money for a bank transfer, and what to write with it so the admin can match it. */
     public record BankInfo(String bank, String branch, String accountName, String accountNumber, String reference, BigDecimal total) {}
 
@@ -48,9 +55,12 @@ public class PaymentService {
     private final PayHereSettings settings;
     private final PaymentOptions options;
     private final BankDetails bank;
+    private final PaymentReceiptRepository receipts;
+    private final ReceiptStorage receiptFiles;
 
     public PaymentService(PaymentRepository payments, BookingRepository bookings, UserRepository users,
-                          NotificationService notifications, PayHereSettings settings, PaymentOptions options, BankDetails bank) {
+                          NotificationService notifications, PayHereSettings settings, PaymentOptions options, BankDetails bank,
+                          PaymentReceiptRepository receipts, ReceiptStorage receiptFiles) {
         this.payments = payments;
         this.bookings = bookings;
         this.users = users;
@@ -58,6 +68,8 @@ public class PaymentService {
         this.settings = settings;
         this.options = options;
         this.bank = bank;
+        this.receipts = receipts;
+        this.receiptFiles = receiptFiles;
     }
 
     public PayMode mode() {
@@ -169,6 +181,51 @@ public class PaymentService {
         if (isPaid(bookingId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "This is already paid");
         return new BankInfo(bank.name().trim(), bank.branch() == null ? "" : bank.branch().trim(), bank.accountName().trim(),
                 bank.accountNumber().trim(), "HC" + bookingId, booking.total());
+    }
+
+    /** How many receipts one request may have, so the disk cannot be filled by one seeker. */
+    static final int MAX_RECEIPTS = 5;
+
+    /**
+     * The seeker sends a screenshot or PDF of their bank transfer. It is kept for the admin and emailed to them with the file attached;
+     * it never marks anything paid, the admin does that after checking the bank account.
+     */
+    @Transactional
+    public PaymentInfo.ReceiptInfo uploadReceipt(User seeker, Long bookingId, MultipartFile file, String note) {
+        Booking booking = bookings.findById(bookingId)
+                .filter(b -> b.getSeekerId().equals(seeker.getId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        if (!options.bankOn()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Paying by bank transfer is switched off right now");
+        if (booking.getStatus() != BookingStatus.COMPLETED || booking.getFeeAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "There is nothing to pay for this request");
+        }
+        if (isPaid(bookingId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "This is already paid");
+        if (receipts.countByBookingId(bookingId) >= MAX_RECEIPTS) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "You have already sent " + MAX_RECEIPTS + " receipts for this request. Please contact our team.");
+        }
+        String text = note == null || note.isBlank() ? null : note.trim();
+        if (text != null && text.length() > 300) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The note must be 300 characters or fewer");
+
+        String stored = receiptFiles.save(file);
+        try {
+            PaymentReceipt receipt = receipts.save(new PaymentReceipt(bookingId, stored, text));
+            notifications.queueAdminMail(bookingId, PaymentMessages.RECEIPT_UPLOADED,
+                    PaymentMessages.receiptUploaded(bookingId, seeker.getFullName(), "LKR " + PayHereSigner.amount(booking.total()),
+                            text == null ? "-" : text, settings.siteUrl() + "/admin", receipt.getId()));
+            log.info("Seeker {} sent a bank transfer receipt for request {}", seeker.getId(), bookingId);
+            return new PaymentInfo.ReceiptInfo(receipt.getId(), receipt.getUploadedAt(), receipt.getNote());
+        } catch (RuntimeException e) {
+            receiptFiles.delete(stored);   // nothing was saved, so the file must not stay behind
+            throw e;
+        }
+    }
+
+    /** A receipt file for the admin. The receipt must belong to the request in the address. */
+    @Transactional(readOnly = true)
+    public StoredReceipt receiptFile(Long bookingId, Long receiptId) {
+        PaymentReceipt receipt = receipts.findById(receiptId).filter(r -> r.getBookingId().equals(bookingId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Receipt not found"));
+        return new StoredReceipt(receiptFiles.load(receipt.getFileName()), DocumentStorage.mediaType(receipt.getFileName()));
     }
 
     // ------------------------------------------------------------------ PayHere's callback

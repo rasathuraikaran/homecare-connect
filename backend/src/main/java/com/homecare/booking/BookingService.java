@@ -4,6 +4,8 @@ import com.homecare.booking.BookingDtos.*;
 import com.homecare.notification.NotificationService;
 import com.homecare.payment.Payment;
 import com.homecare.payment.PaymentInfo;
+import com.homecare.payment.PaymentReceipt;
+import com.homecare.payment.PaymentReceiptRepository;
 import com.homecare.payment.PaymentRepository;
 import com.homecare.profile.CaregiverProfile;
 import com.homecare.profile.CaregiverProfileRepository;
@@ -32,14 +34,16 @@ public class BookingService {
     private final UserRepository users;
     private final NotificationService notifications;
     private final PaymentRepository payments;
+    private final PaymentReceiptRepository receipts;
 
     public BookingService(BookingRepository bookings, CaregiverProfileRepository profiles, UserRepository users,
-                          NotificationService notifications, PaymentRepository payments) {
+                          NotificationService notifications, PaymentRepository payments, PaymentReceiptRepository receipts) {
         this.bookings = bookings;
         this.profiles = profiles;
         this.users = users;
         this.notifications = notifications;
         this.payments = payments;
+        this.receipts = receipts;
     }
 
     @Transactional
@@ -74,20 +78,28 @@ public class BookingService {
 
         User caregiver = users.findById(profile.getUserId()).orElseThrow();
         notifications.queueNewBookingAlert(BookingAlerts.of(booking, seeker, caregiver, profile.getJobType()));   // same transaction as the booking
-        return toResponse(booking, caregiver.getFullName(), profile.getJobType(), List.of());
+        return toResponse(booking, caregiver.getFullName(), profile.getJobType(), List.of(), List.of());
     }
 
     @Transactional(readOnly = true)
     public List<BookingResponse> mine(User seeker) {
         List<Object[]> rows = bookings.forSeeker(seeker.getId(), PageRequest.of(0, LIST_LIMIT));
         Map<Long, List<Payment>> paid = new HashMap<>();
+        Map<Long, List<PaymentReceipt>> sent = new HashMap<>();
         if (!rows.isEmpty()) {
-            for (Payment p : payments.findByBookingIdIn(rows.stream().map(r -> ((Booking) r[0]).getId()).toList())) {
+            List<Long> ids = rows.stream().map(r -> ((Booking) r[0]).getId()).toList();
+            for (Payment p : payments.findByBookingIdIn(ids)) {
                 paid.computeIfAbsent(p.getBookingId(), k -> new java.util.ArrayList<>()).add(p);
+            }
+            for (PaymentReceipt r : receipts.findByBookingIdIn(ids)) {
+                sent.computeIfAbsent(r.getBookingId(), k -> new java.util.ArrayList<>()).add(r);
             }
         }
         return rows.stream()
-                .map(row -> toResponse((Booking) row[0], (String) row[1], (com.homecare.profile.JobType) row[2], paid.getOrDefault(((Booking) row[0]).getId(), List.of())))
+                .map(row -> {
+                    Long id = ((Booking) row[0]).getId();
+                    return toResponse((Booking) row[0], (String) row[1], (com.homecare.profile.JobType) row[2], paid.getOrDefault(id, List.of()), sent.getOrDefault(id, List.of()));
+                })
                 .toList();
     }
 
@@ -103,8 +115,8 @@ public class BookingService {
         booking.changeStatus(BookingStatus.CANCELLED);
     }
 
-    private static BookingResponse toResponse(Booking b, String caregiverName, com.homecare.profile.JobType job, List<Payment> paid) {
+    private static BookingResponse toResponse(Booking b, String caregiverName, com.homecare.profile.JobType job, List<Payment> paid, List<PaymentReceipt> sent) {
         return new BookingResponse(b.getId(), b.getStatus(), b.getCaregiverId(), caregiverName, job,
-                b.getRateType(), b.getQuotedAmount(), b.getNote(), b.getAddress(), b.getCreatedAt(), PaymentInfo.of(b, paid));
+                b.getRateType(), b.getQuotedAmount(), b.getNote(), b.getAddress(), b.getCreatedAt(), PaymentInfo.of(b, paid, sent));
     }
 }

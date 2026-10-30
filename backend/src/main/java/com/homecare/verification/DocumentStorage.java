@@ -85,7 +85,7 @@ public class DocumentStorage {
         return MediaType.IMAGE_JPEG;
     }
 
-    static String detectExtension(byte[] b) {
+    public static String detectExtension(byte[] b) {
         String image = PhotoStorage.detectExtension(b);
         if (image != null) return image;
         boolean pdf = b.length >= 5 && b[0] == '%' && b[1] == 'P' && b[2] == 'D' && b[3] == 'F' && b[4] == '-';
