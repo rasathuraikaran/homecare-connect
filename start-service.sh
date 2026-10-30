@@ -293,8 +293,13 @@ start_all() {
   case "$pay" in
     simulated) echo "  Payments:      ${BOLD}simulated${RESET} ${DIM}(a pretend PayHere page, nothing is charged; not for a real server)${RESET}" ;;
     sandbox|live) echo "  Payments:      ${BOLD}PayHere $pay${RESET}" ;;
-    *) echo "  Payments:      ${BOLD}off${RESET} ${DIM}(no booking fee; set PAYHERE_MODE to turn on)${RESET}" ;;
+    *) echo "  Payments:      ${BOLD}PayHere not set up${RESET} ${DIM}(set PAYHERE_MODE to use cards)${RESET}" ;;
   esac
+  if [ -n "${BANK_NAME:-}" ] && [ -n "${BANK_ACCOUNT_NAME:-}" ] && [ -n "${BANK_ACCOUNT_NUMBER:-}" ]; then
+    echo "  Bank transfer: ${BOLD}set up${RESET} ${DIM}(switch it on in the Admin page)${RESET}"
+  else
+    echo "  Bank transfer: ${BOLD}not set up${RESET} ${DIM}(set BANK_NAME, BANK_ACCOUNT_NAME, BANK_ACCOUNT_NUMBER)${RESET}"
+  fi
   if [ -z "$(google_client_id)" ]; then
     warn "Google sign-in is off (no GOOGLE_CLIENT_ID). Email sign-up and login work normally."
   fi

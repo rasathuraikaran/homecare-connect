@@ -67,7 +67,7 @@ cd frontend && npm install && npm run dev     # UI on :5173 (proxies /api to :80
    Admin page: http://localhost:5173/admin
    ```
 
-4. The admin calls the seeker, arranges it with the caregiver, and marks the request *Confirmed*, *Completed* or *Cancelled*. When online payments are on (see **Booking fee and payments**), marking a visit *Completed* also asks for the fee the seeker pays.
+4. The admin calls the seeker, arranges it with the caregiver, and marks the request *Confirmed*, *Completed* or *Cancelled*. When a way of paying is switched on (see **Payments**), marking a visit *Completed* also asks for the amount the seeker pays.
 
 Because the alert carries the seeker's phone, email and note, send it only to a mailbox you control. (By WhatsApp it also passes through Meta's servers and stays in the admin's chat history.)
 
@@ -138,22 +138,45 @@ Meta charges per message and its prices and rules change, so check their current
 
 Not built yet: delivery receipts and replies from WhatsApp (webhooks), and alerts when a seeker cancels. Alerts are sent by a single backend process; running several backends needs a lock around the sender.
 
-## Booking fee and payments (PayHere)
+## Payments: card (PayHere) and bank transfer
 
-The platform earns a **booking fee**, paid by the care seeker through [PayHere](https://www.payhere.lk) after the visit. It is separate from the caregiver's own charge. PayHere pays the money out to the bank account in **your PayHere merchant profile**; the app never sees or stores a bank account or a card number.
+After a visit the care seeker pays through **PayHere** (card), by **bank transfer**, both, or neither. The admin chooses with two switches at the top of the Admin page, **How care seekers pay**. With **both off**, nothing changes: the admin marks a visit *Completed* and that is all.
+
+**What the seeker pays.** When the admin marks a visit *Completed* with a way of paying on, a form asks for the **caregiver's charge** (filled with the quoted charge; change it if the visit was longer or shorter) and **our fee** (5% of the charge is suggested; it can be anything). The care seeker pays the **total**: charge plus fee. Leave the charge empty to collect only the fee.
+
+**This means the money passes through you.** You receive the total and then pay the caregiver their part yourself; the Admin page shows *Pay the caregiver LKR X* once a request is paid, but it does not track payouts yet. Handling other people's money has tax and legal sides, so speak to an accountant before using it with real users.
 
 1. The request goes as before: Requested, then the admin confirms it and arranges the visit.
-2. After the visit the admin marks it **Completed** and types the fee for that request (5% of the quoted charge is suggested; it can be anything).
-3. The seeker gets an email, and a **Pay now** button appears under **Your requests**. It opens PayHere's own payment page.
-4. When PayHere confirms, the request shows **Paid** on both sides and the seeker gets a receipt. The admin is emailed too, with PayHere's payment id.
+2. After the visit the admin marks it **Completed** and fills in the amounts.
+3. The seeker gets an email, and under **Your requests** they see the amount with **Pay now** (card) and/or **Pay by bank transfer**, which shows your bank details and a reference such as `HC12` to write with the transfer.
+4. A card payment is marked **Paid** by itself when PayHere confirms. A bank transfer is marked paid by the admin (**Mark paid (bank transfer or cash)**) after checking the bank account. Either way the seeker gets a receipt.
 
-On the Admin page a completed request shows the fee and *Unpaid* or *Paid*, with **Send payment email again**, **Change fee** and **Mark paid outside PayHere** (for a bank deposit or cash). A failed or cancelled payment can simply be tried again.
+On the Admin page a completed request shows the total, the split between caregiver and fee, and *Unpaid* or *Paid*, with **Send payment email again**, **Change amounts** and **Mark paid**. A failed or cancelled card payment can simply be tried again.
 
-**Modes.** Set `PAYHERE_MODE` (in `.env.local`):
+### Bank transfer setup
+
+Put your account in `.env.local` (git-ignored; it is only shown to a seeker who owes a payment, and in the email to them) and restart, then switch **Bank transfer** on in the Admin page:
+
+```text
+BANK_NAME=Your Bank
+BANK_BRANCH=Your Branch
+BANK_ACCOUNT_NAME=Name on the account
+BANK_ACCOUNT_NUMBER=1234567890
+```
+
+`BANK_BRANCH` is optional. The switch cannot be turned on until the bank name, account name and account number are set.
+
+**Receipts.** After paying, the seeker can send a **screenshot or PDF of the transfer** from the same box (JPG, PNG, WebP or PDF, up to 5 MB, at most 5 per request, with an optional note). Each receipt is **emailed to the admin address with the file attached** and also appears on the Admin page (*Receipt sent*, with a **View receipt** button). A receipt never marks anything paid: check your bank account, then press **Mark paid**. Receipt files are saved on the server's disk in `uploads/receipts` (git-ignored), are never served from a public address, and are deleted with the account.
+
+### Card payments through PayHere
+
+The platform can also take the payment by card through [PayHere](https://www.payhere.lk). PayHere pays the money out to the bank account in **your PayHere merchant profile**; the app never sees or stores a bank account or a card number. PayHere needs a merchant account (a business registration is required for most kinds of business; check its current rules).
+
+**Modes.** Set `PAYHERE_MODE` (in `.env.local`) to say how this server is set up for PayHere; the **Card payments** switch in the Admin page then turns it on or off:
 
 | Mode | What it does |
 | --- | --- |
-| `off` (default) | No fees. Marking a visit completed works exactly as before. |
+| `off` (default) | PayHere is not set up; its switch cannot be turned on. |
 | `simulated` | A built-in pretend PayHere page, to try the whole flow on your own computer. Nothing is charged and nothing leaves your computer. **Never use it on a real server:** any care seeker could mark their own fee paid. |
 | `sandbox` | PayHere's test system, with test cards. Needs the settings below. |
 | `live` | Real money. Needs the settings below and an approved PayHere merchant account. |
@@ -164,7 +187,7 @@ On the Admin page a completed request shows the fee and *Unpaid* or *Paid*, with
 PAYHERE_MODE=simulated ./start-service.sh restart
 ```
 
-Make a request, confirm it as admin, mark it completed with a fee, then sign in as the seeker and press **Pay now**. The simulator page lets you pay, fail or cancel. To keep it from emailing real people while you try, add `EMAIL_ENABLED=false`.
+Make a request, confirm it as admin, mark it completed with the amounts, then sign in as the seeker and press **Pay now**. The simulator page lets you pay, fail or cancel. To keep it from emailing real people while you try, add `EMAIL_ENABLED=false`.
 
 **Setting up the real PayHere.**
 
