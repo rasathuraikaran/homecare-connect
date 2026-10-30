@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { api, apiBlob } from '../api/client'
 import AdminShell from '../components/AdminShell'
 import { Alert } from '../components/Icons'
 import PaymentSettingsPanel from '../components/PaymentSettingsPanel'
@@ -81,6 +81,24 @@ export default function AdminPage() {
   const changeFee = (id, fee, caregiverAmount) => run(id, () => api(`/admin/bookings/${id}/fee`, { method: 'PUT', body: { fee, caregiverAmount } }))
   const resendPayment = (id) => run(id, () => api(`/admin/bookings/${id}/payment/resend`, { method: 'POST' }))
   const markPaid = (id) => run(id, () => api(`/admin/bookings/${id}/payment/mark-paid`, { method: 'POST' }))
+
+  // Open the tab first, while the click still counts, then point it at the file once it has been fetched with the sign-in token
+  async function viewReceipt(bookingId, receiptId) {
+    const tab = window.open('about:blank', '_blank')
+    if (!tab) {
+      setActionError('Your browser blocked the new tab. Allow pop-ups for this site, then try again.')
+      return
+    }
+    setActionError('')
+    try {
+      const url = URL.createObjectURL(await apiBlob(`/admin/bookings/${bookingId}/receipts/${receiptId}/file`))
+      tab.location.href = url
+      setTimeout(() => URL.revokeObjectURL(url), 10 * 60_000)
+    } catch (e) {
+      tab.close()
+      setActionError(e.message)
+    }
+  }
 
   function submitFee(e, b) {
     e.preventDefault()
@@ -176,7 +194,18 @@ export default function AdminPage() {
                       <span className="muted small">{when(b.payment.paidAt)} · {b.payment.source === 'MANUAL' ? 'recorded by an admin (bank transfer or cash)' : 'through PayHere'}</span>
                     )}
                     {b.payment.state === 'DUE' && b.payment.lastAttempt && <span className="muted small">{ATTEMPT_TEXT[b.payment.lastAttempt]}</span>}
+                    {b.payment.state === 'DUE' && b.payment.receipts?.length > 0 && <StatusChip label="Receipt sent" tone="done" />}
                   </div>
+                  {b.payment.receipts?.length > 0 && (
+                    <ul className="receipt-list">
+                      {b.payment.receipts.map((r, i) => (
+                        <li key={r.id}>
+                          <button type="button" className="link" onClick={() => viewReceipt(b.id, r.id)}>View receipt {b.payment.receipts.length > 1 ? i + 1 : ''}</button>
+                          <span className="muted small">sent {when(r.uploadedAt)}{r.note ? ` · "${r.note}"` : ''}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {b.payment.caregiverAmount != null && (
                     <span className="muted small">
                       Caregiver {formatMoney(b.payment.caregiverAmount)} + our fee {formatMoney(b.payment.fee)}

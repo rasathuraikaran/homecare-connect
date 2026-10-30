@@ -497,12 +497,21 @@ a.cg-card, .cg-card:not(.skeleton):hover { box-shadow: 0 10px 24px rgb(15 23 42 
 .fee-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem 1rem; }
 .fee-total { display: grid; gap: .35rem; font-size: .88rem; font-weight: 600; color: var(--ink-2); }
 .fee-total strong { display: flex; align-items: center; height: 42px; font-size: 1.05rem; color: var(--ink); }
-.bk-pay-actions { display: inline-flex; flex-wrap: wrap; gap: .5rem; }
+.bk-pay-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .bank-box { flex: 1 1 100%; margin: 0; display: grid; gap: .35rem; padding: .75rem .9rem; background: var(--bg); border: 1px dashed var(--line); border-radius: var(--radius); }
 .bank-box > div { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
 .bank-box dt { min-width: 120px; font-size: .82rem; color: var(--ink-3); }
 .bank-box dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 
+.receipt-form { flex: 1 1 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: .55rem; padding: .85rem .9rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.receipt-form input[type="text"] { height: 42px; padding: 0 .8rem; font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); }
+.receipt-form input[type="text"]:focus { outline: none; border-color: var(--brand-600); box-shadow: var(--ring); }
+.receipt-form input { width: 100%; min-width: 0; }
+.receipt-form input[type="file"] { font: inherit; font-size: .9rem; color: var(--ink-2); }
+.receipt-form .btn-primary { justify-self: start; margin-top: 0; }
+.receipt-sent { font-size: .85rem; font-weight: 600; color: var(--brand-text); }
+.receipt-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .25rem; }
+.receipt-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; }
 
 .verified-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .6rem; font-size: .78rem; font-weight: 600; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 999px; }
 .verified-chip svg { width: 14px; height: 14px; }
