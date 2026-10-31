@@ -147,4 +147,101 @@ class ProfileFlowTest {
         mvc.perform(get("/api/files/photos/..%2F..%2Fetc%2Fpasswd")).andExpect(status().is4xxClientError());
         mvc.perform(get("/api/files/photos/nope.png")).andExpect(status().isNotFound());
     }
+
+    @Test
+    void caretakerOnboardingPersistsAllStepsAndRemainsRoleSpecific() throws Exception {
+        String auth = "Bearer " + token("cg-caretaker@test.com", "CAREGIVER");
+        String payload = """
+                {
+                  "fullName": "Sivaram Rasathurai",
+                  "age": 30,
+                  "experienceYears": 3,
+                  "qualification": "Elderly care, Feeding assistance, Companionship",
+                  "jobType": "CARETAKER",
+                  "address": "12 Temple Road, Jaffna",
+                  "rates": { "HOURLY": 1000 },
+                  "caretakerOnboarding": {
+                    "dob": "1996-05-12",
+                    "gender": "Male",
+                    "preferredLanguage": "Tamil",
+                    "spokenLanguages": ["Tamil", "English"],
+                    "emergencyContactName": "K. Rasathurai",
+                    "emergencyContactRelation": "Family member",
+                    "emergencyContactPhone": "0771234567",
+                    "caretakerCategory": "ELDERLY_CAREGIVER",
+                    "skillSources": {
+                      "Elderly care": "Learned on previous job",
+                      "Feeding assistance": "Family caregiving experience"
+                    },
+                    "isNewCaregiver": false,
+                    "workHistory": [
+                      {
+                        "org": "St. Mary's Elders Home",
+                        "title": "Senior Caretaker",
+                        "duration": "2023 - 2026",
+                        "reasonForLeaving": "Relocated",
+                        "responsibilities": "Assisted with mobility and daily meals"
+                      }
+                    ],
+                    "referenceName": "Dr. K. Selvarajah",
+                    "referencePhone": "0779876543",
+                    "educationLevel": "G.C.E. A/L",
+                    "firstAidCertified": "Yes, certified",
+                    "availableDays": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+                    "preferredShift": "Flexible / Any shift",
+                    "workType": "Full-time",
+                    "livingArrangement": "Live-out",
+                    "preferredLocations": "Jaffna, Nallur",
+                    "startWhen": "Immediately",
+                    "callWhatsAppPhone": "0771112233",
+                    "callMethod": "WhatsApp Call",
+                    "callAvailableTimes": ["Morning (8:00 AM – 12:00 PM)", "Evening (4:00 PM – 8:00 PM)"],
+                    "callNotes": "Usually free after 9 AM",
+                    "consents": {
+                      "accurateInfo": true,
+                      "backgroundCheck": true,
+                      "codeOfConduct": true,
+                      "termsPrivacy": true
+                    },
+                    "consented": true,
+                    "backgroundStepSaved": true,
+                    "skillsStepSaved": true,
+                    "experienceStepSaved": true,
+                    "identityStepSaved": true,
+                    "certificatesReviewed": true,
+                    "availabilityStepSaved": true,
+                    "interviewScheduled": true,
+                    "applicationSubmitted": true,
+                    "lastStep": "review"
+                  }
+                }
+                """;
+
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobType").value("CARETAKER"))
+                .andExpect(jsonPath("$.caretakerOnboarding.caretakerCategory").value("ELDERLY_CAREGIVER"))
+                .andExpect(jsonPath("$.caretakerOnboarding.spokenLanguages[1]").value("English"))
+                .andExpect(jsonPath("$.caretakerOnboarding.workHistory[0].org").value("St. Mary's Elders Home"))
+                .andExpect(jsonPath("$.caretakerOnboarding.callWhatsAppPhone").value("0771112233"))
+                .andExpect(jsonPath("$.caretakerOnboarding.callMethod").value("WhatsApp Call"))
+                .andExpect(jsonPath("$.caretakerOnboarding.callAvailableTimes.length()").value(2))
+                .andExpect(jsonPath("$.caretakerOnboarding.applicationSubmitted").value(true));
+
+        mvc.perform(get("/api/caregivers/me/profile").header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.caretakerOnboarding.emergencyContactName").value("K. Rasathurai"))
+                .andExpect(jsonPath("$.caretakerOnboarding.skillSources['Elderly care']").value("Learned on previous job"))
+                .andExpect(jsonPath("$.caretakerOnboarding.consents.accurateInfo").value(true));
+
+        // Nursing profiles do not expose caretakerOnboarding
+        String nurseAuth = "Bearer " + token("cg-nurse@test.com", "CAREGIVER");
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", nurseAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"Nurse A\",\"age\":28,\"jobType\":\"NURSING\",\"address\":\"Colombo\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobType").value("NURSING"))
+                .andExpect(jsonPath("$.caretakerOnboarding").doesNotExist());
+    }
 }

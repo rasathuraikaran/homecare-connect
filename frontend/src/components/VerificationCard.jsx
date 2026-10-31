@@ -6,7 +6,7 @@ import StatusChip from './StatusChip'
 import { DOCUMENT_FILE_TYPES, DOC_LABEL, DOC_TONE, HEADLINE, MAX_DOCUMENT, isListed } from '../constants/verification'
 
 /** The caregiver's checklist of documents. onStatus(true/false) tells the page whether families can see them yet. */
-export default function VerificationCard({ onStatus }) {
+export default function VerificationCard({ onStatus, onView }) {
   const [view, setView] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)               // the document type being uploaded or removed
@@ -16,7 +16,7 @@ export default function VerificationCard({ onStatus }) {
   const target = useRef(null)
 
   // the server decides whether families can see the caregiver, so tell the page whenever it answers
-  const apply = (v) => { setView(v); onStatus?.(isListed(v.status)) }
+  const apply = (v) => { setView(v); onStatus?.(isListed(v.status)); onView?.(v) }
   const fail = (type, message) => setRowError((r) => ({ ...r, [type]: message }))
 
   useEffect(() => {

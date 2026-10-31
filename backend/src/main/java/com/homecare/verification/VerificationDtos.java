@@ -1,6 +1,7 @@
 package com.homecare.verification;
 
 import com.homecare.profile.JobType;
+import com.homecare.profile.ProfileDtos.CaretakerOnboardingDto;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -21,7 +22,7 @@ public final class VerificationDtos {
                                 int revision, String rejectReason, Instant uploadedAt) {}
 
     public record AdminCaregiver(Long userId, String name, String email, String address, JobType job, VerificationStatus status,
-                                 List<AdminDocument> documents) {}
+                                 List<AdminDocument> documents, CaretakerOnboardingDto caretakerOnboarding) {}
 
     public record Summary(int needsReview) {}
 

@@ -16,11 +16,8 @@ import PaySimulatedPage from './pages/PaySimulatedPage'
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth()
-  const location = useLocation()
   if (loading) return <p className="center">Loading…</p>
   if (!user) return <Navigate to="/welcome" replace />
-  // Caregivers must finish their profile before using the app
-  if (!user.profileCompleted && location.pathname !== '/profile') return <Navigate to="/profile" replace />
   return children
 }
 
