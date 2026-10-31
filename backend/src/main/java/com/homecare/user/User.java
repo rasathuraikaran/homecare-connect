@@ -54,6 +54,7 @@ public class User {
     public void linkGoogle(String googleSub) { this.googleSub = googleSub; }
 
     public void setFullName(String fullName) { this.fullName = fullName; }
+    public void setPhone(String phone) { this.phone = phone; }
 
     public Long getId() { return id; }
     public String getEmail() { return email; }

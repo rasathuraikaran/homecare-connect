@@ -255,4 +255,123 @@ class AdminUserFlowTest {
         mvc.perform(delete("/api/admin/users/" + other[1]).header("Authorization", boss[0])).andExpect(status().isNoContent());
         assertEquals(0, count("select count(*) from users where id = ?", Long.parseLong(other[1])));
     }
+
+    @Test
+    void adminCanViewAndAlterCaregiverProfileAndOnboardingData() throws Exception {
+        String[] boss = admin("au-edit-admin@test.com");
+        String[] nurse = register("au-edit-nurse@test.com", "Nimali Perera", "CAREGIVER");
+
+        // Nurse saves initial onboarding
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", nurse[0]).contentType(JSON)
+                .content("""
+                        {
+                          "fullName": "Nimali Perera",
+                          "age": 29,
+                          "experienceYears": 4,
+                          "qualification": "RN",
+                          "jobType": "NURSING",
+                          "address": "10 Hospital Rd, Colombo",
+                          "rates": {"HOURLY": 1500},
+                          "nursingOnboarding": {
+                            "nursingQualificationType": "Diploma in Nursing",
+                            "registrationBody": "SLNC",
+                            "registrationNumber": "SLNC-1001",
+                            "minVisitFee": 1800,
+                            "maxTravelDistance": "10 km",
+                            "services": [
+                              {
+                                "code": "WOUND_DRESSING",
+                                "name": "Wound dressing",
+                                "category": "Wound care",
+                                "expectedRate": 2200,
+                                "duration": "30 minutes",
+                                "experienceLevel": "Performed regularly"
+                              }
+                            ]
+                          }
+                        }
+                        """))
+                .andExpect(status().isOk());
+
+        // Admin reads the nurse profile & onboarding
+        mvc.perform(get("/api/admin/users/" + nurse[1] + "/profile").header("Authorization", boss[0]))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Nimali Perera"))
+                .andExpect(jsonPath("$.jobType").value("NURSING"))
+                .andExpect(jsonPath("$.nursingOnboarding.registrationNumber").value("SLNC-1001"))
+                .andExpect(jsonPath("$.nursingOnboarding.services[0].expectedRate").value(2200.0));
+
+        // Admin alters the nurse's profile, rates, listed status, and nursing onboarding services/rates
+        mvc.perform(put("/api/admin/users/" + nurse[1] + "/profile").header("Authorization", boss[0]).contentType(JSON)
+                .content("""
+                        {
+                          "fullName": "Nimali Perera RN",
+                          "phone": "+94 77 999 8888",
+                          "age": 30,
+                          "experienceYears": 5,
+                          "qualification": "BSc Nursing (Verified)",
+                          "jobType": "NURSING",
+                          "address": "25 Ward Place, Colombo 07",
+                          "available": true,
+                          "listed": true,
+                          "rates": {"HOURLY": 1800, "DAILY": 9500},
+                          "nursingOnboarding": {
+                            "nursingQualificationType": "BSc in Nursing",
+                            "registrationBody": "SLMC",
+                            "registrationNumber": "SLMC-VERIFIED-99",
+                            "minVisitFee": 2500,
+                            "maxTravelDistance": "20 km",
+                            "chargesExtraForTravel": true,
+                            "travelAllowance": "Rs. 75 per km",
+                            "providesNightServices": true,
+                            "nightExtraCharge": "Rs. 1,500",
+                            "callWhatsAppPhone": "+94 77 999 8888",
+                            "callMethod": "WhatsApp Video Call",
+                            "applicationSubmitted": true,
+                            "consented": true,
+                            "services": [
+                              {
+                                "code": "WOUND_DRESSING",
+                                "name": "Wound dressing",
+                                "category": "Wound care",
+                                "expectedRate": 2800,
+                                "duration": "45 minutes",
+                                "experienceLevel": "Extensive experience",
+                                "timesPerformed": "50+",
+                                "lastPerformed": "Within 3 months",
+                                "bringsEquipment": true,
+                                "providesConsumables": true
+                              },
+                              {
+                                "code": "URINARY_CATHETER",
+                                "name": "Urinary catheter replacement",
+                                "category": "Catheter care",
+                                "expectedRate": 3500,
+                                "duration": "30 minutes",
+                                "experienceLevel": "Extensive experience",
+                                "timesPerformed": "50+",
+                                "lastPerformed": "Within 3 months",
+                                "bringsEquipment": true,
+                                "providesConsumables": false
+                              }
+                            ]
+                          }
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Nimali Perera RN"))
+                .andExpect(jsonPath("$.phone").value("+94 77 999 8888"))
+                .andExpect(jsonPath("$.nursingOnboarding.registrationNumber").value("SLMC-VERIFIED-99"))
+                .andExpect(jsonPath("$.nursingOnboarding.minVisitFee").value(2500.0))
+                .andExpect(jsonPath("$.nursingOnboarding.services.length()").value(2))
+                .andExpect(jsonPath("$.nursingOnboarding.services[0].expectedRate").value(2800.0));
+
+        // Verify the nurse sees the admin's updates immediately
+        mvc.perform(get("/api/caregivers/me/profile").header("Authorization", nurse[0]))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Nimali Perera RN"))
+                .andExpect(jsonPath("$.qualification").value("BSc Nursing (Verified)"))
+                .andExpect(jsonPath("$.nursingOnboarding.registrationNumber").value("SLMC-VERIFIED-99"))
+                .andExpect(jsonPath("$.nursingOnboarding.services.length()").value(2));
+    }
 }

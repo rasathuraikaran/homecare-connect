@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, apiBlob } from '../api/client'
 import AdminShell from '../components/AdminShell'
+import AdminProfileEditorModal from '../components/AdminProfileEditorModal'
 import DocumentRulesPanel from '../components/DocumentRulesPanel'
 import { Alert } from '../components/Icons'
 import StatusChip from '../components/StatusChip'
@@ -21,6 +22,7 @@ export default function AdminVerificationPage() {
   const [busyId, setBusyId] = useState(null)
   const [actionError, setActionError] = useState('')
   const [rejecting, setRejecting] = useState(null)   // { docId, reason }
+  const [editingId, setEditingId] = useState(null)
 
   const load = useCallback((silent = false) => {
     if (!silent) setState((s) => ({ ...s, status: 'loading' }))
@@ -110,7 +112,21 @@ export default function AdminVerificationPage() {
               <strong>{c.name}</strong>
               <span className="muted small">{c.job ? jobLabel(c.job) : 'No job chosen yet'} · {c.email}</span>
               <StatusChip label={OVERALL_LABEL[c.status]} tone={OVERALL_TONE[c.status]} />
+              <button
+                type="button"
+                className="btn-ghost small-btn"
+                onClick={() => setEditingId(editingId === c.userId ? null : c.userId)}
+              >
+                {editingId === c.userId ? 'Close editor' : 'Edit Profile & Onboarding'}
+              </button>
             </header>
+            {editingId === c.userId && (
+              <AdminProfileEditorModal
+                userId={c.userId}
+                onClose={() => setEditingId(null)}
+                onSaved={() => load(true)}
+              />
+            )}
             {c.address && <p className="muted small">Address: {c.address}</p>}
             {c.job === 'CARETAKER' && c.caretakerOnboarding && (
               <div className="sub-card" style={{ marginTop: 8, marginBottom: 12 }}>
@@ -130,6 +146,38 @@ export default function AdminVerificationPage() {
                     <>Emergency: {c.caretakerOnboarding.emergencyContactName} ({c.caretakerOnboarding.emergencyContactPhone})</>
                   )}
                 </p>
+              </div>
+            )}
+            {c.job === 'NURSING' && c.nursingOnboarding && (
+              <div className="sub-card" style={{ marginTop: 8, marginBottom: 12 }}>
+                <p className="small">
+                  <strong>10-Min Call:</strong>{' '}
+                  {c.nursingOnboarding.callMethod || 'WhatsApp Call'} ·{' '}
+                  <strong>{c.nursingOnboarding.callWhatsAppPhone || 'No phone set'}</strong>
+                  {c.nursingOnboarding.callAvailableTimes?.length > 0 && (
+                    <> · Free: {c.nursingOnboarding.callAvailableTimes.join(', ')}</>
+                  )}
+                  {c.nursingOnboarding.callNotes && <> ({c.nursingOnboarding.callNotes})</>}
+                </p>
+                <p className="small muted">
+                  {c.nursingOnboarding.nursingQualificationType && <>Qualification: {c.nursingOnboarding.nursingQualificationType} · </>}
+                  {c.nursingOnboarding.registrationBody && (
+                    <>
+                      Reg: {c.nursingOnboarding.registrationBody}
+                      {c.nursingOnboarding.registrationNumber ? ` (${c.nursingOnboarding.registrationNumber})` : ''} ·{' '}
+                    </>
+                  )}
+                  {c.nursingOnboarding.minVisitFee && <>Min Visit: LKR {c.nursingOnboarding.minVisitFee} · </>}
+                  {c.nursingOnboarding.maxTravelDistance && <>Travel: {c.nursingOnboarding.maxTravelDistance}</>}
+                </p>
+                {c.nursingOnboarding.services?.length > 0 && (
+                  <p className="small muted" style={{ marginTop: 4 }}>
+                    <strong>Services ({c.nursingOnboarding.services.length}):</strong>{' '}
+                    {c.nursingOnboarding.services
+                      .map((s) => `${s.name} (LKR ${s.expectedRate} · ${s.experienceLevel || 'Reported'})`)
+                      .join(' · ')}
+                  </p>
+                )}
               </div>
             )}
 

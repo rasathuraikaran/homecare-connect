@@ -14,7 +14,9 @@ import {
   TIPS,
   caretakerCompleteness,
   completeness,
+  loadNursingExtras,
   loadOnboardingExtras,
+  nursingCompleteness,
 } from '../constants/completeness'
 
 export default function CaregiverHome({ firstName }) {
@@ -62,11 +64,19 @@ function Loaded({ profile }) {
   const [reviews, setReviews] = useState(null)
 
   const isCaretaker = profile.jobType === 'CARETAKER'
+  const isNurse = profile.jobType === 'NURSING'
+  const hasStructuredOnboarding = isCaretaker || isNurse
   const userKey = user?.id ?? user?.email
-  const serverExtras = profile?.caretakerOnboarding
+
+  const ctServerExtras = profile?.caretakerOnboarding
     ? Object.fromEntries(Object.entries(profile.caretakerOnboarding).filter(([, v]) => v !== null && v !== undefined))
     : {}
-  const extras = { ...loadOnboardingExtras(userKey), ...serverExtras }
+  const ctExtras = { ...loadOnboardingExtras(userKey), ...ctServerExtras }
+
+  const rnServerExtras = profile?.nursingOnboarding
+    ? Object.fromEntries(Object.entries(profile.nursingOnboarding).filter(([, v]) => v !== null && v !== undefined))
+    : {}
+  const rnExtras = { ...loadNursingExtras(userKey), ...rnServerExtras }
 
   useEffect(() => {
     api('/caregivers/me/reviews').then(setReviews).catch(() => setReviews({ average: null, count: 0, reviews: [], failed: true }))
@@ -92,10 +102,13 @@ function Loaded({ profile }) {
   }
 
   const standardProgress = completeness(profile)
-  const ctProgress = caretakerCompleteness(profile, verification, extras)
-  const activeMissing = isCaretaker ? ctProgress.missing : standardProgress.missing
+  const ctProgress = isNurse
+    ? nursingCompleteness(profile, verification, rnExtras)
+    : caretakerCompleteness(profile, verification, ctExtras)
+  const activeMissing = hasStructuredOnboarding ? ctProgress.missing : standardProgress.missing
   const complete = activeMissing.length === 0
   const tips = [...new Set(activeMissing.map((m) => TIPS[m.key]).filter(Boolean))].slice(0, 3)
+  const roleTitle = isNurse ? 'Nurse' : 'Caretaker'
 
   return (
     <div className="cg-home">
@@ -128,7 +141,9 @@ function Loaded({ profile }) {
             <div className="jobs" role="group" aria-label="Choose your role">
               {JOBS.map(({ value, label, desc }) => {
                 const Icon = JOB_ICONS[value]
-                const to = value === 'CARETAKER' ? '/profile?jobType=CARETAKER&step=about' : `/profile?jobType=${value}&focus=job`
+                const to = value === 'CARETAKER' || value === 'NURSING'
+                  ? `/profile?jobType=${value}&step=about`
+                  : `/profile?jobType=${value}&focus=job`
                 return (
                   <Link key={value} to={to} className="job">
                     <span className="job-icon"><Icon /></span>
@@ -140,25 +155,25 @@ function Loaded({ profile }) {
           </section>
         )}
 
-        {/* CARETAKER-ONLY: 10-Step, 4-Phase Onboarding Flow with Sequential Step Gating */}
-        {isCaretaker ? (
+        {/* CARETAKER & NURSING: 10-Step, 4-Phase Onboarding Flow with Sequential Step Gating */}
+        {hasStructuredOnboarding ? (
           <section className="block onboarding-card">
             <div className="onboarding-head">
               <div>
-                <span className="eyebrow">CARETAKER ONBOARDING JOURNEY · 4 PHASES</span>
-                <h2>{complete ? 'Caretaker onboarding complete 🎉' : `Caretaker onboarding · ${ctProgress.doneCount} of ${ctProgress.totalCount} completed`}</h2>
+                <span className="eyebrow">{roleTitle.toUpperCase()} ONBOARDING JOURNEY · 4 PHASES</span>
+                <h2>{complete ? `${roleTitle} onboarding complete 🎉` : `${roleTitle} onboarding · ${ctProgress.doneCount} of ${ctProgress.totalCount} completed`}</h2>
               </div>
               <span className="onboarding-badge">{ctProgress.percent}% completed</span>
             </div>
 
-            <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ctProgress.percent} aria-label="Caretaker onboarding completeness">
+            <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ctProgress.percent} aria-label={`${roleTitle} onboarding completeness`}>
               <span style={{ width: `${ctProgress.percent}%` }} />
             </div>
 
             <div className="onboarding-cta-row">
               <p className="muted small">
                 {complete
-                  ? 'All 10 caretaker onboarding steps are finished. You can review or edit any step below anytime.'
+                  ? `All 10 ${roleTitle.toLowerCase()} onboarding steps are finished. You can review or edit any step below anytime.`
                   : `Current step: ${ctProgress.nextStep.label} — ${ctProgress.nextStep.action}. Complete each step in order.`}
               </p>
               {!complete && (
@@ -298,10 +313,10 @@ function Loaded({ profile }) {
                         qualification={profile.qualification ?? ''} photo={profile.photoUrl} jobType={profile.jobType}
                         rates={profile.rates} />
         <Link
-          to={isCaretaker ? `/profile?step=${complete ? 'review' : ctProgress.nextStep.focus}` : '/profile'}
+          to={hasStructuredOnboarding ? `/profile?step=${complete ? 'review' : ctProgress.nextStep.focus}` : '/profile'}
           className="btn-primary link-btn"
         >
-          {isCaretaker ? (complete ? 'Review / Edit profile' : `Continue · Step ${ctProgress.nextStep.stepNumber}`) : 'Edit profile'}
+          {hasStructuredOnboarding ? (complete ? 'Review / Edit profile' : `Continue · Step ${ctProgress.nextStep.stepNumber}`) : 'Edit profile'}
         </Link>
       </div>
     </div>

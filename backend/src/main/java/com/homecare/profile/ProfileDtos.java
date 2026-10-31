@@ -65,6 +65,81 @@ public final class ProfileDtos {
             @Size(max = 40) String lastStep
     ) {}
 
+    public record NursingWorkHistoryDto(
+            @Size(max = 150) String org,
+            @Size(max = 120) String title,
+            @Size(max = 100) String department,
+            @Size(max = 100) String duration,
+            @Size(max = 255) String responsibilities
+    ) {}
+
+    public record NursingServiceDto(
+            @Size(max = 80) String code,
+            @Size(max = 120) String name,
+            @Size(max = 80) String category,
+            @DecimalMin(value = "0.01") @DecimalMax(value = "9999999.99") BigDecimal expectedRate,
+            @Size(max = 40) String duration,
+            @Size(max = 80) String experienceLevel,
+            @Size(max = 40) String timesPerformed,
+            @Size(max = 60) String lastPerformed,
+            Boolean bringsEquipment,
+            Boolean providesConsumables
+    ) {}
+
+    /** Role-specific onboarding details for NURSING only. */
+    public record NursingOnboardingDto(
+            @Size(max = 20) String dob,
+            @Size(max = 30) String gender,
+            @Size(max = 40) String preferredLanguage,
+            List<@Size(max = 40) String> spokenLanguages,
+            @Size(max = 150) String emergencyContactName,
+            @Size(max = 80) String emergencyContactRelation,
+            @Size(max = 30) String emergencyContactPhone,
+            @Size(max = 100) String nursingQualificationType,
+            @Size(max = 160) String trainingInstitute,
+            @Size(max = 10) String graduationYear,
+            @Size(max = 80) String registrationBody,
+            @Size(max = 80) String registrationNumber,
+            @Size(max = 20) String registrationValidUntil,
+            List<@Size(max = 80) String> clinicalAreas,
+            Boolean isNewHomeNurse,
+            @Size(max = 80) String currentWorkStatus,
+            List<@Valid NursingWorkHistoryDto> workHistory,
+            @Size(max = 150) String referenceName,
+            @Size(max = 30) String referencePhone,
+            List<@Valid NursingServiceDto> services,
+            Boolean offersLongDurationCare,
+            @Size(max = 300) String additionalTraining,
+            List<@Size(max = 20) String> availableDays,
+            @Size(max = 80) String preferredShift,
+            BigDecimal minVisitFee,
+            @Size(max = 40) String maxTravelDistance,
+            Boolean chargesExtraForTravel,
+            @Size(max = 100) String travelAllowance,
+            Boolean availableForUrgent,
+            Boolean providesNightServices,
+            @Size(max = 100) String nightExtraCharge,
+            Boolean multipleServicesPerVisit,
+            Boolean providesMedicalConsumables,
+            Boolean availableForRecurring,
+            @Size(max = 200) String preferredLocations,
+            @Size(max = 30) String callWhatsAppPhone,
+            @Size(max = 60) String callMethod,
+            List<@Size(max = 80) String> callAvailableTimes,
+            @Size(max = 200) String callNotes,
+            Map<String, Boolean> consents,
+            Boolean consented,
+            Boolean credentialsStepSaved,
+            Boolean experienceStepSaved,
+            Boolean servicesStepSaved,
+            Boolean identityStepSaved,
+            Boolean certificatesReviewed,
+            Boolean availabilityStepSaved,
+            Boolean interviewScheduled,
+            Boolean applicationSubmitted,
+            @Size(max = 40) String lastStep
+    ) {}
+
     public record ProfileRequest(
             @NotBlank(message = "Full name is required") @Size(max = 150, message = "Full name must be 150 characters or fewer") String fullName,
             @Min(value = 18, message = "Age must be between 18 and 100") @Max(value = 100, message = "Age must be between 18 and 100") Integer age,
@@ -73,18 +148,20 @@ public final class ProfileDtos {
             JobType jobType,
             @NotBlank(message = "Address is required") @Size(max = 300, message = "Address must be 300 characters or fewer") String address,
             Map<RateType, @NotNull(message = "must have an amount") @DecimalMin(value = "0.01", message = "must be greater than zero") @DecimalMax(value = "9999999.99", message = "is too large") @Digits(integer = 7, fraction = 2, message = "can have at most 2 decimal places") BigDecimal> rates,
-            @Valid CaretakerOnboardingDto caretakerOnboarding) {
+            @Valid CaretakerOnboardingDto caretakerOnboarding,
+            @Valid NursingOnboardingDto nursingOnboarding) {
 
         public ProfileRequest(String fullName, Integer age, Integer experienceYears, String qualification,
                               JobType jobType, String address, Map<RateType, BigDecimal> rates) {
-            this(fullName, age, experienceYears, qualification, jobType, address, rates, null);
+            this(fullName, age, experienceYears, qualification, jobType, address, rates, null, null);
         }
     }
 
     public record ProfileResponse(String fullName, Integer age, Integer experienceYears,
                                   String qualification, JobType jobType,
                                   Map<RateType, BigDecimal> rates, boolean available, String photoUrl, boolean listed, String address,
-                                  CaretakerOnboardingDto caretakerOnboarding) {}
+                                  CaretakerOnboardingDto caretakerOnboarding,
+                                  NursingOnboardingDto nursingOnboarding) {}
 
     public record AvailabilityRequest(@NotNull(message = "Say whether you are available") Boolean available) {}
 

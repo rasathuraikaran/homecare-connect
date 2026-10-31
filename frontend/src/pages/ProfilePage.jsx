@@ -16,6 +16,9 @@ import {
   CARE_SERVICES,
   EDUCATION_LEVELS,
   EXPERIENCE_SOURCES,
+  NURSING_QUALIFICATION_TYPES,
+  NURSING_REGISTRATION_BODIES,
+  NURSING_TRAVEL_DISTANCES,
   ONBOARDING_CONSENTS,
   ROLE_DYNAMIC_REQUIREMENTS,
   SHIFT_OPTIONS,
@@ -23,9 +26,12 @@ import {
   WEEK_DAYS,
   WIZARD_STEPS,
   caretakerCompleteness,
+  loadNursingExtras,
   loadOnboardingExtras,
+  saveNursingExtras,
   saveOnboardingExtras,
 } from '../constants/completeness'
+import NurseOnboardingWizard from '../components/NurseOnboardingWizard'
 import ProfilePreview from '../components/ProfilePreview'
 
 const MAX_PHOTO = 2 * 1024 * 1024
@@ -111,6 +117,61 @@ export default function ProfilePage() {
     }
   })
 
+  const [rnExtras, setRnExtras] = useState(() => {
+    const saved = loadNursingExtras(userKey)
+    return {
+      dob: '',
+      gender: '',
+      preferredLanguage: 'Tamil',
+      spokenLanguages: ['Tamil'],
+      emergencyContactName: '',
+      emergencyContactRelation: 'Spouse / Partner',
+      emergencyContactPhone: '',
+      nursingQualificationType: NURSING_QUALIFICATION_TYPES[0],
+      trainingInstitute: '',
+      graduationYear: '',
+      registrationBody: NURSING_REGISTRATION_BODIES[0],
+      registrationNumber: '',
+      registrationValidUntil: '',
+      clinicalAreas: [],
+      isNewHomeNurse: false,
+      currentWorkStatus: '',
+      workHistory: [{ org: '', title: '', department: '', duration: '', responsibilities: '' }],
+      referenceName: '',
+      referencePhone: '',
+      services: [],
+      offersLongDurationCare: false,
+      additionalTraining: '',
+      availableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      preferredShift: SHIFT_OPTIONS[0],
+      minVisitFee: '',
+      maxTravelDistance: NURSING_TRAVEL_DISTANCES[1],
+      chargesExtraForTravel: false,
+      travelAllowance: '',
+      availableForUrgent: true,
+      providesNightServices: false,
+      nightExtraCharge: '',
+      multipleServicesPerVisit: true,
+      providesMedicalConsumables: false,
+      availableForRecurring: true,
+      preferredLocations: '',
+      callWhatsAppPhone: user.phone || '',
+      callMethod: 'WhatsApp Call',
+      callAvailableTimes: [CALL_TIME_SLOTS[0]],
+      callNotes: '',
+      consents: {},
+      ...saved,
+    }
+  })
+
+  function updateRnExtras(patch) {
+    setRnExtras((prev) => {
+      const next = { ...prev, ...patch }
+      saveNursingExtras(userKey, next)
+      return next
+    })
+  }
+
   const [photoUrl, setPhotoUrl] = useState(null)       // saved photo
   const [newPhoto, setNewPhoto] = useState(null)       // { file, preview }
   const [removePhoto, setRemovePhoto] = useState(false)
@@ -157,6 +218,28 @@ export default function ProfilePage() {
             return merged
           })
         }
+        if (p.nursingOnboarding) {
+          const fromServer = Object.fromEntries(
+            Object.entries(p.nursingOnboarding).filter(([, v]) => v !== null && v !== undefined)
+          )
+          if (!fromServer.workHistory || fromServer.workHistory.length === 0) {
+            fromServer.workHistory = [{ org: '', title: '', department: '', duration: '', responsibilities: '' }]
+          }
+          if (fromServer.minVisitFee != null) {
+            fromServer.minVisitFee = String(fromServer.minVisitFee)
+          }
+          if (Array.isArray(fromServer.services)) {
+            fromServer.services = fromServer.services.map((s) => ({
+              ...s,
+              expectedRate: s.expectedRate != null ? String(s.expectedRate) : '',
+            }))
+          }
+          setRnExtras((prev) => {
+            const merged = { ...prev, ...fromServer }
+            saveNursingExtras(userKey, merged)
+            return merged
+          })
+        }
       }
       setRequirements(reqs || [])
       if (ver) {
@@ -165,14 +248,21 @@ export default function ProfilePage() {
       }
       setLoaded(true)
     })
-  }, [user.fullName, requestedJobType])
+  }, [user.id])
 
-  // Only CARETAKER uses the 10-step onboarding wizard; NURSING and PHYSIOTHERAPIST keep the standard profile form
+  useEffect(() => {
+    if (requestedJobType) {
+      setForm((prev) => (prev.jobType === requestedJobType ? prev : { ...prev, jobType: requestedJobType }))
+    }
+  }, [requestedJobType])
+
+  // CARETAKER and NURSING use their respective 10-step onboarding wizards; PHYSIOTHERAPIST keeps the standard profile form
   const isCaretakerFlow = form.jobType === 'CARETAKER'
+  const isNursingFlow = form.jobType === 'NURSING'
 
   // Standard form: arriving from a "Set your charges" style link scrolls to that section and highlights it briefly
   useEffect(() => {
-    if (!loaded || !focus || isCaretakerFlow) return
+    if (!loaded || !focus || isCaretakerFlow || isNursingFlow) return
     const el = document.getElementById(focus)
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -592,7 +682,57 @@ export default function ProfilePage() {
   if (!loaded) return <p className="center">Loading…</p>
 
   // ==========================================================================
-  // RENDER 1: Standard Profile Form for NURSING / PHYSIOTHERAPIST / Unselected
+  // RENDER 1: Home Nurse 10-Step Post-Onboarding Wizard (jobType === 'NURSING')
+  // ==========================================================================
+  if (isNursingFlow) {
+    return (
+      <NurseOnboardingWizard
+        user={user}
+        form={form}
+        setForm={setForm}
+        rnExtras={rnExtras}
+        updateRnExtras={updateRnExtras}
+        photoUrl={photoUrl}
+        setPhotoUrl={setPhotoUrl}
+        newPhoto={newPhoto}
+        setNewPhoto={setNewPhoto}
+        removePhoto={removePhoto}
+        setRemovePhoto={setRemovePhoto}
+        shownPhoto={shownPhoto}
+        pickPhoto={acceptPhoto}
+        dragging={dragging}
+        setDragging={setDragging}
+        fileRef={fileRef}
+        docRows={docRows}
+        savedDocs={savedDocs}
+        setSavedDocs={setSavedDocs}
+        newDocs={newDocs}
+        setNewDocs={setNewDocs}
+        verification={verification}
+        setVerification={setVerification}
+        openDocPicker={pickDocument}
+        removeQueuedDoc={(type) =>
+          setNewDocs((d) => {
+            const copy = { ...d }
+            delete copy[type]
+            return copy
+          })
+        }
+        docRef={docRef}
+        onDocInputChange={(e) => {
+          acceptDocument(e.target.files?.[0])
+          e.target.value = ''
+        }}
+        requestedStep={requestedStep}
+        setParams={setParams}
+        refresh={refresh}
+        logout={logout}
+      />
+    )
+  }
+
+  // ==========================================================================
+  // RENDER 2: Standard Profile Form for PHYSIOTHERAPIST / Unselected
   // ==========================================================================
   if (!isCaretakerFlow) {
     const standardIssues = attempted && allProblems.length ? allProblems : serverIssues
@@ -1075,15 +1215,6 @@ export default function ProfilePage() {
                       <li key={item}><Check /> <span>{item}</span></li>
                     ))}
                   </ul>
-                </div>
-
-                <div className="field">
-                  <span className="hint">
-                    Registering as a Nurse or Physiotherapist instead? Switch to{' '}
-                    <button type="button" className="link" onClick={() => setForm({ ...form, jobType: 'NURSING' })}>Nursing</button>
-                    {' '}or{' '}
-                    <button type="button" className="link" onClick={() => setForm({ ...form, jobType: 'PHYSIOTHERAPIST' })}>Physiotherapist</button>.
-                  </span>
                 </div>
               </section>
             )}

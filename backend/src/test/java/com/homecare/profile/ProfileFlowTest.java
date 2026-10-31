@@ -244,4 +244,131 @@ class ProfileFlowTest {
                 .andExpect(jsonPath("$.jobType").value("NURSING"))
                 .andExpect(jsonPath("$.caretakerOnboarding").doesNotExist());
     }
+
+    @Test
+    void nursingOnboardingPersistsServicesRatesAndTravelRules() throws Exception {
+        String auth = "Bearer " + token("cg-nurse-full@test.com", "CAREGIVER");
+        String payload = """
+                {
+                  "fullName": "Nirmala Perera",
+                  "age": 32,
+                  "experienceYears": 7,
+                  "qualification": "Urinary catheter replacement, Wound dressing, Blood pressure checking",
+                  "jobType": "NURSING",
+                  "address": "45 Hospital Road, Jaffna",
+                  "rates": { "SESSION": 1500 },
+                  "nursingOnboarding": {
+                    "dob": "1994-03-20",
+                    "gender": "Female",
+                    "preferredLanguage": "Tamil",
+                    "spokenLanguages": ["Tamil", "English", "Sinhala"],
+                    "emergencyContactName": "S. Perera",
+                    "emergencyContactRelation": "Spouse / Partner",
+                    "emergencyContactPhone": "0772223344",
+                    "nursingQualificationType": "Diploma in Nursing (3-Year General Nursing)",
+                    "trainingInstitute": "School of Nursing, Jaffna",
+                    "graduationYear": "2018",
+                    "registrationBody": "Sri Lanka Nursing Council (SLNC)",
+                    "registrationNumber": "SLNC-48291",
+                    "registrationValidUntil": "2028-12-31",
+                    "clinicalAreas": ["General Medical / Surgical Ward", "ICU / Critical Care"],
+                    "isNewHomeNurse": false,
+                    "currentWorkStatus": "Government hospital nurse (part-time home visits)",
+                    "workHistory": [
+                      {
+                        "org": "Teaching Hospital Jaffna",
+                        "title": "Staff Nurse",
+                        "department": "Surgical Ward",
+                        "duration": "2019 - Present",
+                        "responsibilities": "Post-op wound care, catheterization, and IV medications"
+                      }
+                    ],
+                    "referenceName": "Dr. M. Ratnam",
+                    "referencePhone": "0778889900",
+                    "services": [
+                      {
+                        "code": "CATHETER_REPLACEMENT",
+                        "name": "Urinary catheter replacement",
+                        "category": "Catheter care",
+                        "expectedRate": 2000,
+                        "duration": "30 minutes",
+                        "experienceLevel": "Extensive experience",
+                        "timesPerformed": "50+",
+                        "lastPerformed": "Within 3 months",
+                        "bringsEquipment": true,
+                        "providesConsumables": true
+                      },
+                      {
+                        "code": "WOUND_DRESSING",
+                        "name": "Wound dressing",
+                        "category": "Wound care",
+                        "expectedRate": 1500,
+                        "duration": "30 minutes",
+                        "experienceLevel": "Performed regularly",
+                        "timesPerformed": "50+",
+                        "lastPerformed": "Within 3 months",
+                        "bringsEquipment": true,
+                        "providesConsumables": false
+                      }
+                    ],
+                    "offersLongDurationCare": false,
+                    "additionalTraining": "Advanced Wound Management Certificate",
+                    "availableDays": ["Mon", "Wed", "Fri", "Sat", "Sun"],
+                    "preferredShift": "Evening (2:00 PM – 8:00 PM)",
+                    "minVisitFee": 1500,
+                    "maxTravelDistance": "20 km",
+                    "chargesExtraForTravel": true,
+                    "travelAllowance": "LKR 80 per km beyond 5 km",
+                    "availableForUrgent": true,
+                    "providesNightServices": true,
+                    "nightExtraCharge": "LKR 1,000 extra",
+                    "multipleServicesPerVisit": true,
+                    "providesMedicalConsumables": true,
+                    "availableForRecurring": true,
+                    "preferredLocations": "Jaffna, Nallur, Kopay",
+                    "callWhatsAppPhone": "0775556677",
+                    "callMethod": "WhatsApp Call",
+                    "callAvailableTimes": ["Evening (4:00 PM – 8:00 PM)"],
+                    "callNotes": "Free after hospital shift at 4 PM",
+                    "consents": {
+                      "accurateInfo": true,
+                      "clinicalScope": true,
+                      "backgroundCheck": true,
+                      "termsPrivacy": true
+                    },
+                    "consented": true,
+                    "credentialsStepSaved": true,
+                    "experienceStepSaved": true,
+                    "servicesStepSaved": true,
+                    "identityStepSaved": true,
+                    "certificatesReviewed": true,
+                    "availabilityStepSaved": true,
+                    "interviewScheduled": true,
+                    "applicationSubmitted": true,
+                    "lastStep": "review"
+                  }
+                }
+                """;
+
+        mvc.perform(put("/api/caregivers/me/profile").header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON).content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobType").value("NURSING"))
+                .andExpect(jsonPath("$.caretakerOnboarding").doesNotExist())
+                .andExpect(jsonPath("$.nursingOnboarding.registrationNumber").value("SLNC-48291"))
+                .andExpect(jsonPath("$.nursingOnboarding.services.length()").value(2))
+                .andExpect(jsonPath("$.nursingOnboarding.services[0].name").value("Urinary catheter replacement"))
+                .andExpect(jsonPath("$.nursingOnboarding.services[0].expectedRate").value(2000))
+                .andExpect(jsonPath("$.nursingOnboarding.services[0].timesPerformed").value("50+"))
+                .andExpect(jsonPath("$.nursingOnboarding.minVisitFee").value(1500))
+                .andExpect(jsonPath("$.nursingOnboarding.maxTravelDistance").value("20 km"))
+                .andExpect(jsonPath("$.nursingOnboarding.providesNightServices").value(true))
+                .andExpect(jsonPath("$.nursingOnboarding.applicationSubmitted").value(true));
+
+        mvc.perform(get("/api/caregivers/me/profile").header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nursingOnboarding.trainingInstitute").value("School of Nursing, Jaffna"))
+                .andExpect(jsonPath("$.nursingOnboarding.services[1].name").value("Wound dressing"))
+                .andExpect(jsonPath("$.nursingOnboarding.consents.clinicalScope").value(true));
+    }
 }

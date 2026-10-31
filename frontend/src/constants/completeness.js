@@ -103,6 +103,16 @@ export const ROLE_DYNAMIC_REQUIREMENTS = {
       'Safeguarding & caretaker code of conduct agreement',
     ],
   },
+  NURSING: {
+    title: 'Your tailored Home Nurse onboarding requirements',
+    items: [
+      'Nursing qualification & SLNC / SLMC professional registration details',
+      'Home nursing procedures you perform & your expected LKR payout per visit',
+      'NIC & Nursing qualification certificate verification',
+      'Minimum home visit fee, travel distance, night visit & urgent booking rules',
+      '10-minute introductory WhatsApp / phone call with our clinical coordinator',
+    ],
+  },
 }
 
 export const ONBOARDING_CONSENTS = [
@@ -324,6 +334,382 @@ export function caretakerCompleteness(profile, verification = null, extras = {})
   const maxUnlockedStepNumber = nextStep ? nextStep.stepNumber : 10
 
   const phases = CARETAKER_ONBOARDING_PHASES.map((phase) => ({
+    ...phase,
+    steps: phase.steps.map((s) => items.find((i) => i.key === s.key)),
+  }))
+
+  return {
+    items,
+    phases,
+    doneCount,
+    totalCount: items.length,
+    percent: Math.round((doneCount / items.length) * 100),
+    missing,
+    nextStep,
+    maxUnlockedStepNumber,
+  }
+}
+
+// ============================================================================
+// NURSING-ONLY (jobType === 'NURSING') 10-Step, 4-Phase Onboarding Flow
+// ============================================================================
+
+export const HOME_NURSING_SERVICES = [
+  {
+    code: 'BP_CHECKING',
+    name: 'Blood pressure checking',
+    category: 'Health monitoring',
+    defaultDuration: '15 minutes',
+    suggestedRate: '1000',
+  },
+  {
+    code: 'GLUCOSE_CHECKING',
+    name: 'Blood glucose checking',
+    category: 'Health monitoring',
+    defaultDuration: '15 minutes',
+    suggestedRate: '1000',
+  },
+  {
+    code: 'WOUND_DRESSING',
+    name: 'Wound dressing',
+    category: 'Wound care',
+    defaultDuration: '30 minutes',
+    suggestedRate: '1800',
+  },
+  {
+    code: 'CATHETER_REPLACEMENT',
+    name: 'Urinary catheter replacement',
+    category: 'Catheter care',
+    defaultDuration: '30 minutes',
+    suggestedRate: '2000',
+  },
+  {
+    code: 'PRESCRIBED_INJECTION',
+    name: 'Prescribed injection',
+    category: 'Medication',
+    defaultDuration: '20 minutes',
+    suggestedRate: '1200',
+  },
+  {
+    code: 'NG_TUBE_CARE',
+    name: 'NG tube care',
+    category: 'Tube care',
+    defaultDuration: '30 minutes',
+    suggestedRate: '2000',
+  },
+  {
+    code: 'BEDSIDE_NURSING',
+    name: 'Bedside nursing care',
+    category: 'Patient care',
+    defaultDuration: '60 minutes',
+    suggestedRate: '2500',
+  },
+  {
+    code: 'COMFORT_MASSAGE',
+    name: 'Gentle comfort massage',
+    category: 'Comfort care',
+    defaultDuration: '30 minutes',
+    suggestedRate: '1800',
+  },
+]
+
+export const NURSING_SERVICE_EXPERIENCE_LEVELS = [
+  'Trained but limited experience',
+  'Performed regularly',
+  'Extensive experience',
+]
+
+export const NURSING_TIMES_PERFORMED = [
+  'Under 10',
+  '10–50',
+  '50+',
+]
+
+export const NURSING_LAST_PERFORMED = [
+  'Within 3 months',
+  'Within 1 year',
+  'More than 1 year ago',
+]
+
+export const NURSING_DURATIONS = [
+  '15 minutes',
+  '20 minutes',
+  '30 minutes',
+  '45 minutes',
+  '60 minutes',
+]
+
+export const NURSING_QUALIFICATION_TYPES = [
+  'Diploma in Nursing (3-Year General Nursing)',
+  'BSc in Nursing (Honours / General)',
+  'Post-Basic Nursing Diploma',
+  'Nursing & Midwifery Diploma',
+  'Enrolled Nurse / Assistant Nurse Certificate',
+]
+
+export const NURSING_REGISTRATION_BODIES = [
+  'Sri Lanka Nursing Council (SLNC)',
+  'Sri Lanka Medical Council (SLMC)',
+  'Private Health Services Regulatory Council (PHSRC)',
+  'Registration in progress / Pending',
+]
+
+export const NURSING_CLINICAL_AREAS = [
+  'General Medical / Surgical Ward',
+  'ICU / HDU / Critical Care',
+  'Emergency / ETU',
+  'Post-Operative & Wound Care',
+  'Geriatric & Palliative Care',
+  'Community / Home Nursing',
+]
+
+export const NURSING_WORK_STATUSES = [
+  'Government hospital nurse (available for part-time home visits)',
+  'Private hospital / clinic nurse',
+  'Full-time home care nurse',
+  'Former / retired hospital nurse',
+]
+
+export const NURSING_TRAVEL_DISTANCES = [
+  '5 km',
+  '10 km',
+  '20 km',
+  '30+ km',
+]
+
+export const NURSING_CONSENTS = [
+  {
+    key: 'accurateInfo',
+    label: 'Self-reported competency & pricing accuracy',
+    desc: 'I confirm that my nursing qualifications, procedure experience levels, and expected rates are accurate and subject to clinical verification before activation.',
+  },
+  {
+    key: 'clinicalScope',
+    label: 'Clinical scope of practice & prescription adherence',
+    desc: 'I agree to perform invasive procedures and administer medications strictly according to a valid doctor’s prescription and safe nursing protocols.',
+  },
+  {
+    key: 'backgroundCheck',
+    label: 'Credential & identity verification consent',
+    desc: 'I authorise HomeCare Connect to verify my NIC, Nursing certificate, SLNC/SLMC registration, and professional references.',
+  },
+  {
+    key: 'termsPrivacy',
+    label: 'Patient confidentiality & privacy consent',
+    desc: 'I commit to strict patient medical confidentiality, infection control standards, and HomeCare Connect privacy terms.',
+  },
+]
+
+const NURSING_STORAGE_PREFIX = 'hc_nursing_onboarding_v1_'
+
+export function loadNursingExtras(userKey) {
+  if (!userKey) return {}
+  try {
+    const raw = localStorage.getItem(`${NURSING_STORAGE_PREFIX}${userKey}`)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveNursingExtras(userKey, patch) {
+  if (!userKey) return {}
+  try {
+    const current = loadNursingExtras(userKey)
+    const next = { ...current, ...patch, lastSavedAt: new Date().toISOString() }
+    localStorage.setItem(`${NURSING_STORAGE_PREFIX}${userKey}`, JSON.stringify(next))
+    return next
+  } catch {
+    return patch
+  }
+}
+
+function hasNursingIdentityDoc(verification, extras) {
+  const docs = verification?.documents ?? []
+  return docs.some((d) => d.type === 'NIC' && !!d.status) || Boolean(extras?.identityStepSaved)
+}
+
+function hasNursingCertificateDoc(verification, extras) {
+  const docs = verification?.documents ?? []
+  return docs.some((d) => d.type === 'NURSING_CERTIFICATE' && !!d.status) || Boolean(extras?.certificatesReviewed)
+}
+
+function hasAllNursingConsents(extras) {
+  const c = extras?.consents ?? {}
+  return NURSING_CONSENTS.every((item) => !!c[item.key])
+}
+
+export const NURSING_ONBOARDING_PHASES = [
+  {
+    id: 'getting-started',
+    phaseNumber: 1,
+    title: 'Getting started',
+    steps: [
+      {
+        stepNumber: 1,
+        key: 'account',
+        focus: 'about',
+        label: 'Step 1 – Account creation',
+        shortTitle: 'Account creation',
+        action: 'Account created & verified',
+        done: () => true,
+      },
+      {
+        stepNumber: 2,
+        key: 'about',
+        focus: 'about',
+        label: 'Step 2 – Personal information',
+        shortTitle: 'Personal information',
+        action: 'Name, DOB/age, gender, address & emergency contact',
+        done: (p, _v, extras) =>
+          !!p?.fullName?.trim() &&
+          !!p?.address?.trim() &&
+          p?.age != null &&
+          !!extras?.gender &&
+          !!extras?.emergencyContactName?.trim() &&
+          !!extras?.emergencyContactPhone?.trim(),
+      },
+    ],
+  },
+  {
+    id: 'clinical-profile',
+    phaseNumber: 2,
+    title: 'Clinical profile',
+    steps: [
+      {
+        stepNumber: 3,
+        key: 'job',
+        focus: 'job',
+        label: 'Step 3 – Nursing qualifications & registration',
+        shortTitle: 'Qualifications & registration',
+        action: 'Nursing diploma/degree & SLNC/SLMC registration',
+        done: (p, _v, extras) =>
+          p?.jobType === 'NURSING' &&
+          !!extras?.nursingQualificationType &&
+          !!extras?.registrationBody &&
+          !!extras?.credentialsStepSaved,
+      },
+      {
+        stepNumber: 4,
+        key: 'experience',
+        focus: 'experience',
+        label: 'Step 4 – Employment experience',
+        shortTitle: 'Employment experience',
+        action: 'Hospital / clinical work history & references (optional)',
+        done: (p, _v, extras) => Boolean(extras?.experienceStepSaved) || p?.experienceYears != null,
+      },
+      {
+        stepNumber: 5,
+        key: 'skills',
+        focus: 'skills',
+        label: 'Step 5 – Your home nursing services & rates',
+        shortTitle: 'Home nursing services & rates',
+        action: 'Select home nursing procedures & expected LKR payout per visit',
+        done: (_p, _v, extras) =>
+          Boolean(
+            extras?.servicesStepSaved &&
+              Array.isArray(extras?.services) &&
+              extras.services.length > 0 &&
+              extras.services.every((s) => Number(s.expectedRate) > 0)
+          ),
+      },
+    ],
+  },
+  {
+    id: 'verification',
+    phaseNumber: 3,
+    title: 'Verification & logistics',
+    steps: [
+      {
+        stepNumber: 6,
+        key: 'identity_docs',
+        focus: 'identity_docs',
+        label: 'Step 6 – Identity documents',
+        shortTitle: 'Identity documents',
+        action: 'Upload your National Identity Card (NIC)',
+        done: (_p, v, extras) => hasNursingIdentityDoc(v, extras),
+      },
+      {
+        stepNumber: 7,
+        key: 'certificates',
+        focus: 'certificates',
+        label: 'Step 7 – Nursing certificates & training',
+        shortTitle: 'Nursing certificates',
+        action: 'Upload Nursing qualification certificate & specialist training',
+        done: (_p, v, extras) => hasNursingCertificateDoc(v, extras),
+      },
+      {
+        stepNumber: 8,
+        key: 'charges',
+        focus: 'charges',
+        label: 'Step 8 – Availability & travel preferences',
+        shortTitle: 'Availability & travel',
+        action: 'Min visit payment, travel distance, night visits & urgent bookings',
+        done: (_p, _v, extras) =>
+          Boolean(
+            extras?.availabilityStepSaved &&
+              Number(extras?.minVisitFee) > 0 &&
+              !!extras?.maxTravelDistance &&
+              (extras?.availableDays?.length ?? 0) > 0
+          ),
+      },
+    ],
+  },
+  {
+    id: 'final-steps',
+    phaseNumber: 4,
+    title: 'Final steps',
+    steps: [
+      {
+        stepNumber: 9,
+        key: 'interview',
+        focus: 'interview',
+        label: 'Step 9 – 10-min WhatsApp / phone call',
+        shortTitle: '10-min WhatsApp call',
+        action: 'Share your daily free time for a 10-min verification call',
+        done: (_p, _v, extras) =>
+          Boolean(extras?.interviewScheduled && extras?.callWhatsAppPhone?.trim() && (extras?.callAvailableTimes?.length ?? 0) > 0),
+      },
+      {
+        stepNumber: 10,
+        key: 'review',
+        focus: 'review',
+        label: 'Step 10 – Review and submit',
+        shortTitle: 'Review & submit',
+        action: 'Review services, rates & accept clinical agreements',
+        done: (p, _v, extras) => (hasAllNursingConsents(extras) || Boolean(extras?.applicationSubmitted)) && !!p?.address?.trim(),
+      },
+    ],
+  },
+]
+
+export const NURSING_ONBOARDING_STEPS = NURSING_ONBOARDING_PHASES.flatMap((phase) =>
+  phase.steps.map((s) => ({ ...s, phaseId: phase.id, phaseNumber: phase.phaseNumber, phaseTitle: phase.title }))
+)
+
+export const NURSING_WIZARD_STEPS = NURSING_ONBOARDING_STEPS.filter((s) => s.stepNumber >= 2)
+
+export function nursingCompleteness(profile, verification = null, extras = {}) {
+  let previousAllDone = true
+  const items = NURSING_ONBOARDING_STEPS.map((step) => {
+    const rawDone = Boolean(step.done(profile, verification, extras))
+    const isUnlocked = previousAllDone
+    const isDone = isUnlocked && rawDone
+    if (!isDone) previousAllDone = false
+    return {
+      ...step,
+      rawDone,
+      isDone,
+      isUnlocked,
+    }
+  })
+
+  const doneCount = items.filter((i) => i.isDone).length
+  const missing = items.filter((i) => !i.isDone)
+  const nextStep = missing[0] ?? NURSING_WIZARD_STEPS[NURSING_WIZARD_STEPS.length - 1]
+  const maxUnlockedStepNumber = nextStep ? nextStep.stepNumber : 10
+
+  const phases = NURSING_ONBOARDING_PHASES.map((phase) => ({
     ...phase,
     steps: phase.steps.map((s) => items.find((i) => i.key === s.key)),
   }))
