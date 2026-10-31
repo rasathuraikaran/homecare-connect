@@ -2,7 +2,10 @@ package com.homecare.verification;
 
 import com.homecare.profile.CaregiverProfile;
 import com.homecare.profile.CaregiverProfileRepository;
+import com.homecare.profile.CaretakerOnboarding;
+import com.homecare.profile.CaretakerOnboardingRepository;
 import com.homecare.profile.JobType;
+import com.homecare.profile.ProfileDtos.CaretakerOnboardingDto;
 import com.homecare.user.User;
 import com.homecare.user.UserRepository;
 import com.homecare.verification.VerificationDtos.*;
@@ -35,16 +38,19 @@ public class AdminVerificationService {
 
     private final CaregiverDocumentRepository documents;
     private final CaregiverProfileRepository profiles;
+    private final CaretakerOnboardingRepository caretakerOnboardings;
     private final UserRepository users;
     private final VerificationService verification;
     private final DocumentStorage storage;
     private final DocumentRules rules;
 
     public AdminVerificationService(CaregiverDocumentRepository documents, CaregiverProfileRepository profiles,
+                                    CaretakerOnboardingRepository caretakerOnboardings,
                                     UserRepository users, VerificationService verification, DocumentStorage storage,
                                     DocumentRules rules) {
         this.documents = documents;
         this.profiles = profiles;
+        this.caretakerOnboardings = caretakerOnboardings;
         this.users = users;
         this.verification = verification;
         this.storage = storage;
@@ -114,6 +120,8 @@ public class AdminVerificationService {
         users.findAllById(ids).forEach(u -> people.put(u.getId(), u));
         Map<Long, CaregiverProfile> profileById = new HashMap<>();
         profiles.findAllById(ids).forEach(p -> profileById.put(p.getUserId(), p));
+        Map<Long, CaretakerOnboardingDto> onboardingById = new HashMap<>();
+        caretakerOnboardings.findAllById(ids).forEach(o -> onboardingById.put(o.getUserId(), o.toDto()));
         Map<Long, Map<DocumentType, CaregiverDocument>> uploaded = new HashMap<>();
         for (CaregiverDocument d : documents.findByUserIdIn(ids)) {
             uploaded.computeIfAbsent(d.getUserId(), k -> new EnumMap<>(DocumentType.class)).put(d.getDocType(), d);
@@ -133,8 +141,9 @@ public class AdminVerificationService {
             for (DocumentType type : DocumentType.applicableTo(job)) {
                 if (!required.contains(type)) rows.add(row(type, false, mine.get(type)));
             }
+            CaretakerOnboardingDto onboarding = job == JobType.CARETAKER ? onboardingById.get(id) : null;
             result.add(new AdminCaregiver(id, person.getFullName(), person.getEmail(), profile == null ? null : profile.getAddress(), job,
-                    VerificationStatus.of(job, mine, required), rows));
+                    VerificationStatus.of(job, mine, required), rows, onboarding));
         }
         return result;
     }

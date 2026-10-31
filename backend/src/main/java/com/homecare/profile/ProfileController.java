@@ -34,6 +34,17 @@ public class ProfileController {
         return service.save(user, req);
     }
 
+    @GetMapping("/caregivers/me/caretaker-onboarding")
+    public CaretakerOnboardingDto getCaretakerOnboarding(@AuthenticationPrincipal User user) {
+        return service.getCaretakerOnboarding(user);
+    }
+
+    @PutMapping("/caregivers/me/caretaker-onboarding")
+    public CaretakerOnboardingDto saveCaretakerOnboarding(@AuthenticationPrincipal User user,
+                                                          @Valid @RequestBody CaretakerOnboardingDto req) {
+        return service.saveCaretakerOnboarding(user, req);
+    }
+
     @PostMapping("/caregivers/me/photo")
     public ProfileResponse uploadPhoto(@AuthenticationPrincipal User user, @RequestParam("file") MultipartFile file) {
         return service.setPhoto(user, file);

@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 import { Alert, Arrow, Bulb, Check } from '../components/Icons'
+import { JOB_ICONS } from '../components/jobIcons'
+import { JOBS } from '../constants/jobs'
 import ProfilePreview from '../components/ProfilePreview'
 import ReviewList, { RatingSummary } from '../components/ReviewList'
 import VerificationCard from '../components/VerificationCard'
-import { COMPLETENESS_ITEMS, GENERIC_TIP, TIPS, completeness } from '../constants/completeness'
+import {
+  COMPLETENESS_ITEMS,
+  GENERIC_TIP,
+  TIPS,
+  caretakerCompleteness,
+  completeness,
+  loadOnboardingExtras,
+} from '../constants/completeness'
 
 export default function CaregiverHome({ firstName }) {
   const [profile, setProfile] = useState(null)
@@ -43,17 +53,30 @@ export default function CaregiverHome({ firstName }) {
 }
 
 function Loaded({ profile }) {
+  const { user } = useAuth()
   const [available, setAvailable] = useState(profile.available)
   const [listed, setListed] = useState(profile.listed)
+  const [verification, setVerification] = useState(null)
   const [toggleError, setToggleError] = useState('')
   const [toggling, setToggling] = useState(false)
   const [reviews, setReviews] = useState(null)
+
+  const isCaretaker = profile.jobType === 'CARETAKER'
+  const userKey = user?.id ?? user?.email
+  const serverExtras = profile?.caretakerOnboarding
+    ? Object.fromEntries(Object.entries(profile.caretakerOnboarding).filter(([, v]) => v !== null && v !== undefined))
+    : {}
+  const extras = { ...loadOnboardingExtras(userKey), ...serverExtras }
 
   useEffect(() => {
     api('/caregivers/me/reviews').then(setReviews).catch(() => setReviews({ average: null, count: 0, reviews: [], failed: true }))
   }, [])
 
   async function toggle() {
+    if (!profile.address) {
+      setToggleError('Save your profile details (name and address) first to change your availability.')
+      return
+    }
     const next = !available
     setAvailable(next)            // optimistic: flip now, undo if the server says no
     setToggleError('')
@@ -68,9 +91,11 @@ function Loaded({ profile }) {
     }
   }
 
-  const { items, percent, missing } = completeness(profile)
-  const complete = missing.length === 0
-  const tips = [...new Set(missing.map((m) => TIPS[m.key]).filter(Boolean))].slice(0, 3)
+  const standardProgress = completeness(profile)
+  const ctProgress = caretakerCompleteness(profile, verification, extras)
+  const activeMissing = isCaretaker ? ctProgress.missing : standardProgress.missing
+  const complete = activeMissing.length === 0
+  const tips = [...new Set(activeMissing.map((m) => TIPS[m.key]).filter(Boolean))].slice(0, 3)
 
   return (
     <div className="cg-home">
@@ -89,34 +114,164 @@ function Loaded({ profile }) {
                   className="switch" disabled={toggling} onClick={toggle}><span /></button>
         </section>
 
-        <VerificationCard onStatus={setListed} />
+        <VerificationCard onStatus={setListed} onView={setVerification} />
 
-        <section className="block">
-          <div className="block-head">
-            <h2>{complete ? 'Your profile is complete 🎉' : `Your profile is ${percent}% complete`}</h2>
-            {!complete && <span className="muted">{items.length - missing.length} of {items.length} done</span>}
-          </div>
-          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Profile completeness">
-            <span style={{ width: `${percent}%` }} />
-          </div>
-          <p className="muted small">
-            {complete ? 'Families can see everything about you.' : 'A complete profile makes it easier for families to choose you.'}
-          </p>
+        {/* If the user has not chosen a jobType yet, let them pick their role right here */}
+        {!profile.jobType && (
+          <section className="block">
+            <div className="block-head">
+              <h2>Start by choosing what you do</h2>
+            </div>
+            <p className="muted small">
+              Each professional role has its own onboarding and verification steps. Select your role to begin:
+            </p>
+            <div className="jobs" role="group" aria-label="Choose your role">
+              {JOBS.map(({ value, label, desc }) => {
+                const Icon = JOB_ICONS[value]
+                const to = value === 'CARETAKER' ? '/profile?jobType=CARETAKER&step=about' : `/profile?jobType=${value}&focus=job`
+                return (
+                  <Link key={value} to={to} className="job">
+                    <span className="job-icon"><Icon /></span>
+                    <span className="job-text"><strong>{label}</strong><em>{desc}</em></span>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
-          <ul className="todo">
-            {COMPLETENESS_ITEMS.map((def) => {
-              const item = items.find((i) => i.key === def.key)
-              return item.isDone ? (
-                <li key={item.key} className="done"><span className="tick"><Check /></span>{item.label}</li>
-              ) : (
-                <li key={item.key}>
-                  <span className="tick open" />
-                  <Link to={`/profile?focus=${item.focus}`}>{item.action}<Arrow /></Link>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
+        {/* CARETAKER-ONLY: 10-Step, 4-Phase Onboarding Flow with Sequential Step Gating */}
+        {isCaretaker ? (
+          <section className="block onboarding-card">
+            <div className="onboarding-head">
+              <div>
+                <span className="eyebrow">CARETAKER ONBOARDING JOURNEY · 4 PHASES</span>
+                <h2>{complete ? 'Caretaker onboarding complete 🎉' : `Caretaker onboarding · ${ctProgress.doneCount} of ${ctProgress.totalCount} completed`}</h2>
+              </div>
+              <span className="onboarding-badge">{ctProgress.percent}% completed</span>
+            </div>
+
+            <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ctProgress.percent} aria-label="Caretaker onboarding completeness">
+              <span style={{ width: `${ctProgress.percent}%` }} />
+            </div>
+
+            <div className="onboarding-cta-row">
+              <p className="muted small">
+                {complete
+                  ? 'All 10 caretaker onboarding steps are finished. You can review or edit any step below anytime.'
+                  : `Current step: ${ctProgress.nextStep.label} — ${ctProgress.nextStep.action}. Complete each step in order.`}
+              </p>
+              {!complete && (
+                <Link to={`/profile?step=${ctProgress.nextStep.focus}`} className="btn-primary small-btn link-btn">
+                  {ctProgress.doneCount <= 1 ? 'Start Step 2' : `Continue · Step ${ctProgress.nextStep.stepNumber}`}
+                </Link>
+              )}
+            </div>
+
+            <div className="phase-grid">
+              {ctProgress.phases.map((phase) => {
+                const phaseDone = phase.steps.filter((s) => s.isDone).length
+                return (
+                  <div key={phase.id} className="phase-box">
+                    <div className="phase-head">
+                      <strong>Phase {phase.phaseNumber} · {phase.title}</strong>
+                      <span className="muted small">{phaseDone}/{phase.steps.length}</span>
+                    </div>
+                    <ul className="todo phase-steps">
+                      {phase.steps.map((step) => {
+                        const isAccountStep = step.key === 'account'
+                        const isCurrentNext = !step.isDone && step.stepNumber === ctProgress.maxUnlockedStepNumber
+                        const isLocked = !step.isDone && !step.isUnlocked
+
+                        if (step.isDone) {
+                          return (
+                            <li key={step.key} className="done">
+                              <span className="tick"><Check /></span>
+                              {isAccountStep ? (
+                                <span>
+                                  <strong>{step.label}</strong>
+                                  <em className="step-sub">{step.action}</em>
+                                </span>
+                              ) : (
+                                <Link to={`/profile?step=${step.focus}`}>
+                                  <span>
+                                    <strong>{step.label}</strong>
+                                    <em className="step-sub">{step.action}</em>
+                                  </span>
+                                  <span className="edit-pill">Edit</span>
+                                </Link>
+                              )}
+                            </li>
+                          )
+                        }
+
+                        if (isCurrentNext) {
+                          return (
+                            <li key={step.key} className="current-step-item">
+                              <span className="tick current-num">{step.stepNumber}</span>
+                              <Link to={`/profile?step=${step.focus}`}>
+                                <span>
+                                  <strong>{step.label}</strong>
+                                  <em className="step-sub">{step.action}</em>
+                                </span>
+                                <Arrow />
+                              </Link>
+                            </li>
+                          )
+                        }
+
+                        return (
+                          <li key={step.key} className={isLocked ? 'locked' : ''} aria-disabled={isLocked}>
+                            <span className="tick locked-num">{step.stepNumber}</span>
+                            <div className="locked-step-body">
+                              <span>
+                                <strong>{step.label}</strong>
+                                <em className="step-sub">{step.action}</em>
+                              </span>
+                              <span className="locked-pill">Locked</span>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        ) : (
+          /* NURSING & PHYSIOTHERAPIST (and unselected): Original Completeness Card */
+          <section className="block">
+            <div className="block-head">
+              <h2>{complete ? 'Your profile is complete 🎉' : `Your profile is ${standardProgress.percent}% complete`}</h2>
+              {!complete && (
+                <span className="muted">
+                  {standardProgress.items.length - standardProgress.missing.length} of {standardProgress.items.length} done
+                </span>
+              )}
+            </div>
+            <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={standardProgress.percent} aria-label="Profile completeness">
+              <span style={{ width: `${standardProgress.percent}%` }} />
+            </div>
+            <p className="muted small">
+              {complete ? 'Families can see everything about you.' : 'A complete profile makes it easier for families to choose you.'}
+            </p>
+
+            <ul className="todo">
+              {COMPLETENESS_ITEMS.map((def) => {
+                const item = standardProgress.items.find((i) => i.key === def.key)
+                return item.isDone ? (
+                  <li key={item.key} className="done"><span className="tick"><Check /></span>{item.label}</li>
+                ) : (
+                  <li key={item.key}>
+                    <span className="tick open" />
+                    <Link to={`/profile?focus=${item.focus}`}>{item.action}<Arrow /></Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
 
         <section className="block">
           <div className="block-head">
@@ -142,7 +297,12 @@ function Loaded({ profile }) {
         <ProfilePreview name={profile.fullName} age={profile.age ?? ''} years={profile.experienceYears ?? ''}
                         qualification={profile.qualification ?? ''} photo={profile.photoUrl} jobType={profile.jobType}
                         rates={profile.rates} />
-        <Link to="/profile" className="btn-primary link-btn">Edit profile</Link>
+        <Link
+          to={isCaretaker ? `/profile?step=${complete ? 'review' : ctProgress.nextStep.focus}` : '/profile'}
+          className="btn-primary link-btn"
+        >
+          {isCaretaker ? (complete ? 'Review / Edit profile' : `Continue · Step ${ctProgress.nextStep.stepNumber}`) : 'Edit profile'}
+        </Link>
       </div>
     </div>
   )

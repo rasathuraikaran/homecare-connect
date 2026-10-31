@@ -112,6 +112,26 @@ export default function AdminVerificationPage() {
               <StatusChip label={OVERALL_LABEL[c.status]} tone={OVERALL_TONE[c.status]} />
             </header>
             {c.address && <p className="muted small">Address: {c.address}</p>}
+            {c.job === 'CARETAKER' && c.caretakerOnboarding && (
+              <div className="sub-card" style={{ marginTop: 8, marginBottom: 12 }}>
+                <p className="small">
+                  <strong>10-Min Call:</strong>{' '}
+                  {c.caretakerOnboarding.callMethod || 'WhatsApp Call'} ·{' '}
+                  <strong>{c.caretakerOnboarding.callWhatsAppPhone || 'No phone set'}</strong>
+                  {c.caretakerOnboarding.callAvailableTimes?.length > 0 && (
+                    <> · Free: {c.caretakerOnboarding.callAvailableTimes.join(', ')}</>
+                  )}
+                  {c.caretakerOnboarding.callNotes && <> ({c.caretakerOnboarding.callNotes})</>}
+                </p>
+                <p className="small muted">
+                  {c.caretakerOnboarding.caretakerCategory && <>Category: {c.caretakerOnboarding.caretakerCategory} · </>}
+                  {c.caretakerOnboarding.educationLevel && <>Education: {c.caretakerOnboarding.educationLevel} · </>}
+                  {c.caretakerOnboarding.emergencyContactName && (
+                    <>Emergency: {c.caretakerOnboarding.emergencyContactName} ({c.caretakerOnboarding.emergencyContactPhone})</>
+                  )}
+                </p>
+              </div>
+            )}
 
             <ul className="doc-list">
               {c.documents.map((d) => {

@@ -17,13 +17,16 @@ public class ProfileService {
 
     private final UserRepository users;
     private final CaregiverProfileRepository profiles;
+    private final CaretakerOnboardingRepository caretakerOnboardings;
     private final PhotoStorage photos;
     private final ApplicationEventPublisher events;
 
-    public ProfileService(UserRepository users, CaregiverProfileRepository profiles, PhotoStorage photos,
-                          ApplicationEventPublisher events) {
+    public ProfileService(UserRepository users, CaregiverProfileRepository profiles,
+                          CaretakerOnboardingRepository caretakerOnboardings,
+                          PhotoStorage photos, ApplicationEventPublisher events) {
         this.users = users;
         this.profiles = profiles;
+        this.caretakerOnboardings = caretakerOnboardings;
         this.photos = photos;
         this.events = events;
     }
@@ -43,8 +46,36 @@ public class ProfileService {
         JobType before = profile.getJobType();
         profile.update(req.age(), req.experienceYears(), qualification, req.jobType(), req.rates(), req.address().trim());
         CaregiverProfile saved = profiles.save(profile);
+
+        // Only persist caretaker onboarding details when the caregiver is a CARETAKER
+        if (req.jobType() == JobType.CARETAKER && req.caretakerOnboarding() != null) {
+            CaretakerOnboarding onboarding = caretakerOnboardings.findById(user.getId())
+                    .orElseGet(() -> new CaretakerOnboarding(user.getId()));
+            onboarding.apply(req.caretakerOnboarding());
+            caretakerOnboardings.save(onboarding);
+        }
+
         if (before != req.jobType()) events.publishEvent(new ProfileJobChanged(user.getId()));   // what they must prove depends on the job
         return toResponse(user, saved);
+    }
+
+    @Transactional(readOnly = true)
+    public CaretakerOnboardingDto getCaretakerOnboarding(User principal) {
+        return caretakerOnboardings.findById(principal.getId())
+                .map(CaretakerOnboarding::toDto)
+                .orElse(null);
+    }
+
+    @Transactional
+    public CaretakerOnboardingDto saveCaretakerOnboarding(User principal, CaretakerOnboardingDto dto) {
+        CaregiverProfile profile = profiles.findById(principal.getId()).orElse(null);
+        if (profile != null && profile.getJobType() != null && profile.getJobType() != JobType.CARETAKER) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Caretaker onboarding is only applicable to Caretaker role");
+        }
+        CaretakerOnboarding onboarding = caretakerOnboardings.findById(principal.getId())
+                .orElseGet(() -> new CaretakerOnboarding(principal.getId()));
+        onboarding.apply(dto);
+        return caretakerOnboardings.save(onboarding).toDto();
     }
 
     @Transactional
@@ -80,7 +111,16 @@ public class ProfileService {
     }
 
     private ProfileResponse toResponse(User user, CaregiverProfile p) {
-        if (p == null) return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null, false, null);
-        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(), p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed(), p.getAddress());
+        if (p == null) {
+            CaretakerOnboardingDto onboarding = caretakerOnboardings.findById(user.getId())
+                    .map(CaretakerOnboarding::toDto)
+                    .orElse(null);
+            return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null, false, null, onboarding);
+        }
+        CaretakerOnboardingDto onboarding = p.getJobType() == JobType.CARETAKER
+                ? caretakerOnboardings.findById(user.getId()).map(CaretakerOnboarding::toDto).orElse(null)
+                : null;
+        return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(),
+                p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed(), p.getAddress(), onboarding);
     }
 }
