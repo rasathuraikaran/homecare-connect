@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import AdminShell from '../components/AdminShell'
+import AdminProfileEditorModal from '../components/AdminProfileEditorModal'
 import { Alert } from '../components/Icons'
 import StatusChip from '../components/StatusChip'
 import { jobLabel } from '../constants/jobs'
@@ -21,6 +22,7 @@ export default function AdminUsersPage() {
   const [q, setQ] = useState('')                       // what is searched for, a moment after typing stops
   const [state, setState] = useState({ status: 'loading', list: [], error: '' })
   const [removing, setRemoving] = useState(null)       // { user, preview, typed, busy, error }
+  const [editingId, setEditingId] = useState(null)
   const [notice, setNotice] = useState('')
   const latest = useRef(0)
 
@@ -89,8 +91,9 @@ export default function AdminUsersPage() {
         <ul className="doc-list">
           {state.list.map((u) => {
             const open = removing?.user.id === u.id
+            const editing = editingId === u.id
             return (
-              <li key={u.id} className="doc-row">
+              <li key={u.id} className="doc-row" style={{ flexWrap: 'wrap' }}>
                 <div className="doc-main">
                   <strong>{u.name} {u.admin && <span className="admin-tag">Admin</span>}</strong>
                   <span className="muted small">{u.email} · joined {joined(u.createdAt)}</span>
@@ -104,12 +107,35 @@ export default function AdminUsersPage() {
                       <StatusChip label={u.listed ? 'Visible to families' : 'Hidden from families'} tone={u.listed ? 'ok' : 'wait'} />
                     </>
                   )}
+                  <button
+                    type="button"
+                    className="btn-ghost small-btn"
+                    onClick={() => {
+                      setNotice('')
+                      setEditingId(editing ? null : u.id)
+                    }}
+                  >
+                    {editing ? 'Close editor' : 'Edit / Manage'}
+                  </button>
                   {u.admin ? (
                     <span className="muted small" title="Remove the admin rights first (make-admin --remove), then it can be deleted">Admin account</span>
                   ) : (
                     <button type="button" className="btn-ghost danger small-btn" disabled={open} onClick={() => startRemoving(u)}>Delete</button>
                   )}
                 </div>
+
+                {editing && (
+                  <div style={{ width: '100%' }}>
+                    <AdminProfileEditorModal
+                      userId={u.id}
+                      onClose={() => setEditingId(null)}
+                      onSaved={(updated) => {
+                        setNotice(`Saved changes for ${updated.fullName}.`)
+                        load()
+                      }}
+                    />
+                  </div>
+                )}
 
                 {open && (
                   <div className="delete-panel" role="alertdialog" aria-label={`Delete ${u.name}`}>

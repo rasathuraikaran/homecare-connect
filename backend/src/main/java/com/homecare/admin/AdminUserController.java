@@ -1,9 +1,12 @@
 package com.homecare.admin;
 
+import com.homecare.admin.AdminUserDtos.AdminUserProfile;
+import com.homecare.admin.AdminUserDtos.AdminUserProfileUpdateRequest;
 import com.homecare.admin.AdminUserDtos.AdminUserRow;
 import com.homecare.admin.AdminUserDtos.DeletionPreview;
 import com.homecare.user.Role;
 import com.homecare.user.User;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +27,18 @@ public class AdminUserController {
     @GetMapping
     public List<AdminUserRow> list(@RequestParam(required = false) Role role, @RequestParam(defaultValue = "") String q) {
         return service.list(role, q);
+    }
+
+    @GetMapping("/{id}/profile")
+    public AdminUserProfile getProfile(@PathVariable Long id) {
+        return service.getProfile(id);
+    }
+
+    @PutMapping("/{id}/profile")
+    public AdminUserProfile updateProfile(@AuthenticationPrincipal User admin,
+                                          @PathVariable Long id,
+                                          @Valid @RequestBody AdminUserProfileUpdateRequest req) {
+        return service.updateProfile(admin, id, req);
     }
 
     @GetMapping("/{id}/deletion-preview")

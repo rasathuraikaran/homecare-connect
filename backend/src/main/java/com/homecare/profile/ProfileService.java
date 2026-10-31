@@ -18,15 +18,18 @@ public class ProfileService {
     private final UserRepository users;
     private final CaregiverProfileRepository profiles;
     private final CaretakerOnboardingRepository caretakerOnboardings;
+    private final NursingOnboardingRepository nursingOnboardings;
     private final PhotoStorage photos;
     private final ApplicationEventPublisher events;
 
     public ProfileService(UserRepository users, CaregiverProfileRepository profiles,
                           CaretakerOnboardingRepository caretakerOnboardings,
+                          NursingOnboardingRepository nursingOnboardings,
                           PhotoStorage photos, ApplicationEventPublisher events) {
         this.users = users;
         this.profiles = profiles;
         this.caretakerOnboardings = caretakerOnboardings;
+        this.nursingOnboardings = nursingOnboardings;
         this.photos = photos;
         this.events = events;
     }
@@ -55,6 +58,14 @@ public class ProfileService {
             caretakerOnboardings.save(onboarding);
         }
 
+        // Only persist nursing onboarding details when the caregiver is NURSING
+        if (req.jobType() == JobType.NURSING && req.nursingOnboarding() != null) {
+            NursingOnboarding onboarding = nursingOnboardings.findById(user.getId())
+                    .orElseGet(() -> new NursingOnboarding(user.getId()));
+            onboarding.apply(req.nursingOnboarding());
+            nursingOnboardings.save(onboarding);
+        }
+
         if (before != req.jobType()) events.publishEvent(new ProfileJobChanged(user.getId()));   // what they must prove depends on the job
         return toResponse(user, saved);
     }
@@ -76,6 +87,25 @@ public class ProfileService {
                 .orElseGet(() -> new CaretakerOnboarding(principal.getId()));
         onboarding.apply(dto);
         return caretakerOnboardings.save(onboarding).toDto();
+    }
+
+    @Transactional(readOnly = true)
+    public NursingOnboardingDto getNursingOnboarding(User principal) {
+        return nursingOnboardings.findById(principal.getId())
+                .map(NursingOnboarding::toDto)
+                .orElse(null);
+    }
+
+    @Transactional
+    public NursingOnboardingDto saveNursingOnboarding(User principal, NursingOnboardingDto dto) {
+        CaregiverProfile profile = profiles.findById(principal.getId()).orElse(null);
+        if (profile != null && profile.getJobType() != null && profile.getJobType() != JobType.NURSING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nursing onboarding is only applicable to Nurse role");
+        }
+        NursingOnboarding onboarding = nursingOnboardings.findById(principal.getId())
+                .orElseGet(() -> new NursingOnboarding(principal.getId()));
+        onboarding.apply(dto);
+        return nursingOnboardings.save(onboarding).toDto();
     }
 
     @Transactional
@@ -112,15 +142,21 @@ public class ProfileService {
 
     private ProfileResponse toResponse(User user, CaregiverProfile p) {
         if (p == null) {
-            CaretakerOnboardingDto onboarding = caretakerOnboardings.findById(user.getId())
+            CaretakerOnboardingDto ctOnboarding = caretakerOnboardings.findById(user.getId())
                     .map(CaretakerOnboarding::toDto)
                     .orElse(null);
-            return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null, false, null, onboarding);
+            NursingOnboardingDto rnOnboarding = nursingOnboardings.findById(user.getId())
+                    .map(NursingOnboarding::toDto)
+                    .orElse(null);
+            return new ProfileResponse(user.getFullName(), null, null, null, null, Map.of(), true, null, false, null, ctOnboarding, rnOnboarding);
         }
-        CaretakerOnboardingDto onboarding = p.getJobType() == JobType.CARETAKER
+        CaretakerOnboardingDto ctOnboarding = p.getJobType() == JobType.CARETAKER
                 ? caretakerOnboardings.findById(user.getId()).map(CaretakerOnboarding::toDto).orElse(null)
                 : null;
+        NursingOnboardingDto rnOnboarding = p.getJobType() == JobType.NURSING
+                ? nursingOnboardings.findById(user.getId()).map(NursingOnboarding::toDto).orElse(null)
+                : null;
         return new ProfileResponse(user.getFullName(), p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(),
-                p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed(), p.getAddress(), onboarding);
+                p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed(), p.getAddress(), ctOnboarding, rnOnboarding);
     }
 }

@@ -209,10 +209,13 @@ public class CaretakerOnboarding {
         this.callNotes = clean(dto.callNotes(), 200);
 
         if (dto.consents() != null) {
-            this.consentAccurateInfo = Boolean.TRUE.equals(dto.consents().get("accurateInfo"));
-            this.consentBackgroundCheck = Boolean.TRUE.equals(dto.consents().get("backgroundCheck"));
+            this.consentAccurateInfo = Boolean.TRUE.equals(dto.consents().get("accurateInfo"))
+                    || Boolean.TRUE.equals(dto.consents().get("serviceAgreement"));
+            this.consentBackgroundCheck = Boolean.TRUE.equals(dto.consents().get("backgroundCheck"))
+                    || Boolean.TRUE.equals(dto.consents().get("backgroundConsent"));
             this.consentCodeOfConduct = Boolean.TRUE.equals(dto.consents().get("codeOfConduct"));
-            this.consentTermsPrivacy = Boolean.TRUE.equals(dto.consents().get("termsPrivacy"));
+            this.consentTermsPrivacy = Boolean.TRUE.equals(dto.consents().get("termsPrivacy"))
+                    || Boolean.TRUE.equals(dto.consents().get("privacyConsent"));
         }
         if (dto.consented() != null) {
             this.consented = dto.consented();
@@ -237,9 +240,12 @@ public class CaretakerOnboarding {
     public CaretakerOnboardingDto toDto() {
         Map<String, Boolean> consents = new LinkedHashMap<>();
         consents.put("accurateInfo", consentAccurateInfo);
+        consents.put("serviceAgreement", consentAccurateInfo);
         consents.put("backgroundCheck", consentBackgroundCheck);
+        consents.put("backgroundConsent", consentBackgroundCheck);
         consents.put("codeOfConduct", consentCodeOfConduct);
         consents.put("termsPrivacy", consentTermsPrivacy);
+        consents.put("privacyConsent", consentTermsPrivacy);
 
         List<WorkHistoryEntryDto> history = workHistory.stream()
                 .filter(Objects::nonNull)

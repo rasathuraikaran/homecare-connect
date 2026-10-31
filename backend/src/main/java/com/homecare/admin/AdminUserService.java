@@ -1,12 +1,21 @@
 package com.homecare.admin;
 
+import com.homecare.admin.AdminUserDtos.AdminUserProfile;
+import com.homecare.admin.AdminUserDtos.AdminUserProfileUpdateRequest;
 import com.homecare.admin.AdminUserDtos.AdminUserRow;
 import com.homecare.admin.AdminUserDtos.DeletionPreview;
 import com.homecare.booking.BookingRepository;
 import com.homecare.booking.BookingStatus;
 import com.homecare.profile.CaregiverProfile;
 import com.homecare.profile.CaregiverProfileRepository;
+import com.homecare.profile.CaretakerOnboarding;
+import com.homecare.profile.CaretakerOnboardingRepository;
+import com.homecare.profile.JobType;
+import com.homecare.profile.NursingOnboarding;
+import com.homecare.profile.NursingOnboardingRepository;
 import com.homecare.profile.PhotoStorage;
+import com.homecare.profile.ProfileDtos.CaretakerOnboardingDto;
+import com.homecare.profile.ProfileDtos.NursingOnboardingDto;
 import com.homecare.review.ReviewRepository;
 import com.homecare.user.Role;
 import com.homecare.user.User;
@@ -28,8 +37,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-/** The admin's account tools: find a caregiver or care seeker and delete their account for good. */
+/** The admin's account tools: find, inspect, edit, or delete a caregiver or care seeker account. */
 @Service
 public class AdminUserService {
 
@@ -39,6 +49,8 @@ public class AdminUserService {
 
     private final UserRepository users;
     private final CaregiverProfileRepository profiles;
+    private final CaretakerOnboardingRepository caretakerOnboardings;
+    private final NursingOnboardingRepository nursingOnboardings;
     private final CaregiverDocumentRepository documents;
     private final BookingRepository bookings;
     private final ReviewRepository reviews;
@@ -47,11 +59,16 @@ public class AdminUserService {
     private final PaymentReceiptRepository receipts;
     private final ReceiptStorage receiptFiles;
 
-    public AdminUserService(UserRepository users, CaregiverProfileRepository profiles, CaregiverDocumentRepository documents,
+    public AdminUserService(UserRepository users, CaregiverProfileRepository profiles,
+                            CaretakerOnboardingRepository caretakerOnboardings,
+                            NursingOnboardingRepository nursingOnboardings,
+                            CaregiverDocumentRepository documents,
                             BookingRepository bookings, ReviewRepository reviews, PhotoStorage photos, DocumentStorage documentFiles,
                             PaymentReceiptRepository receipts, ReceiptStorage receiptFiles) {
         this.users = users;
         this.profiles = profiles;
+        this.caretakerOnboardings = caretakerOnboardings;
+        this.nursingOnboardings = nursingOnboardings;
         this.documents = documents;
         this.bookings = bookings;
         this.reviews = reviews;
@@ -72,6 +89,85 @@ public class AdminUserService {
             return new AdminUserRow(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), u.isAdmin(), u.getCreatedAt(),
                     p == null ? null : p.getJobType(), p == null ? null : p.isListed(), p == null ? null : p.getAddress());
         }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AdminUserProfile getProfile(Long id) {
+        User u = find(id);
+        CaregiverProfile p = profiles.findById(id).orElse(null);
+        return toAdminProfile(u, p);
+    }
+
+    @Transactional
+    public AdminUserProfile updateProfile(User admin, Long id, AdminUserProfileUpdateRequest req) {
+        User u = find(id);
+        u.setFullName(req.fullName().trim());
+        if (req.phone() != null) {
+            u.setPhone(req.phone().isBlank() ? null : req.phone().trim());
+        }
+        users.save(u);
+
+        CaregiverProfile savedProfile = null;
+        if (u.getRole() == Role.CAREGIVER) {
+            CaregiverProfile profile = profiles.findById(id).orElseGet(() -> new CaregiverProfile(id));
+            String qualification = req.qualification() == null || req.qualification().isBlank() ? null : req.qualification().trim();
+            String address = req.address() == null ? (profile.getAddress() == null ? "" : profile.getAddress()) : req.address().trim();
+            JobType effectiveJobType = req.jobType() != null ? req.jobType() : profile.getJobType();
+            profile.update(
+                    req.age() != null ? req.age() : profile.getAge(),
+                    req.experienceYears() != null ? req.experienceYears() : profile.getExperienceYears(),
+                    qualification,
+                    effectiveJobType,
+                    req.rates() != null ? req.rates() : profile.getRates(),
+                    address
+            );
+            if (req.available() != null) {
+                profile.setAvailable(req.available());
+            }
+            if (req.listed() != null) {
+                profile.setListed(req.listed());
+            }
+            savedProfile = profiles.save(profile);
+
+            if (effectiveJobType == JobType.CARETAKER && req.caretakerOnboarding() != null) {
+                CaretakerOnboarding ct = caretakerOnboardings.findById(id)
+                        .orElseGet(() -> new CaretakerOnboarding(id));
+                ct.apply(req.caretakerOnboarding());
+                caretakerOnboardings.save(ct);
+            }
+
+            if (effectiveJobType == JobType.NURSING && req.nursingOnboarding() != null) {
+                NursingOnboarding rn = nursingOnboardings.findById(id)
+                        .orElseGet(() -> new NursingOnboarding(id));
+                rn.apply(req.nursingOnboarding());
+                nursingOnboardings.save(rn);
+            }
+        }
+
+        log.info("Admin {} updated profile for account {}", admin.getId(), id);
+        return toAdminProfile(u, savedProfile);
+    }
+
+    private AdminUserProfile toAdminProfile(User u, CaregiverProfile p) {
+        CaretakerOnboardingDto ct = caretakerOnboardings.findById(u.getId())
+                .map(CaretakerOnboarding::toDto)
+                .orElse(null);
+        NursingOnboardingDto rn = nursingOnboardings.findById(u.getId())
+                .map(NursingOnboarding::toDto)
+                .orElse(null);
+        if (p == null) {
+            return new AdminUserProfile(
+                    u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole(),
+                    null, null, null, null, Map.of(), true, null, false, null, ct, rn
+            );
+        }
+        return new AdminUserProfile(
+                u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole(),
+                p.getAge(), p.getExperienceYears(), p.getQualification(), p.getJobType(),
+                p.getRates(), p.isAvailable(), p.photoUrl(), p.isListed(), p.getAddress(),
+                p.getJobType() == JobType.CARETAKER || p.getJobType() == null ? ct : null,
+                p.getJobType() == JobType.NURSING || p.getJobType() == null ? rn : null
+        );
     }
 
     @Transactional(readOnly = true)
